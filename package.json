@@ -37,8 +37,5 @@
     "varlock": "catalog:",
     "vite-plus": "0.3.1"
   },
-  "overrides": {
-    "vite": "npm:@voidzero-dev/vite-plus-core@0.3.1"
-  },
   "packageManager": "pnpm@12.5.1"
 }
