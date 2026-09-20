@@ -24,7 +24,7 @@ applications instead of demonstrating each one in isolation:
 | Tool calls | Let the researcher search the web and read uploaded documents |
 | RAG and vector search | Retrieve relevant passages from uploaded PDFs |
 | File storage | Store source documents used during research |
-| Multiple agents | Coordinate planner, researcher, writer, and fact-checker roles |
+| Multiple agents | Coordinate planner, researcher, writer, and fact-checker roles |s
 | Durable workflows | Run plan, research, write, and verify steps reliably |
 | Usage tracking | Record token use by user, thread, model, and feature |
 | Cost accounting | Attribute model usage and cost to users and features |
