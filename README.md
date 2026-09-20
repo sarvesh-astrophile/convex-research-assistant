@@ -27,8 +27,8 @@ applications instead of demonstrating each one in isolation:
 | Multiple agents | Coordinate planner, researcher, writer, and fact-checker roles |
 | Durable workflows | Run plan, research, write, and verify steps reliably |
 | Usage tracking | Record token use by user, thread, model, and feature |
-| Cost accounting | Convert model and tool usage into estimated dollar costs |
-| Rate and budget limits | Protect provider API keys from unbounded usage |
+| Cost accounting | Attribute model usage and cost to users and features |
+| Rate and budget limits | Prevent unbounded AI spending |
 
 ## Planned Workflow
 
@@ -48,52 +48,46 @@ results, citations, and usage remain connected.
 
 ## Cost-Control Strategy
 
-This project will use **our own model-provider API keys**. It will not require
-the Convex AI Gateway.
+This project will use the **Convex AI Gateway** with the `ai-budget` component.
+Convex manages provider credentials, while the application authenticates to the
+gateway with a short-lived token scoped to its deployment.
 
 The planned cost-control loop has four parts:
 
 | Responsibility | Planned solution |
 | --- | --- |
-| Measure token usage | Convex Agent usage tracking |
-| Estimate dollar cost | Neutral Cost pricing data |
-| Limit request frequency | Convex Rate Limiter |
-| Enforce spending caps | Application-level budget checks before expensive workflows |
+| Measure token usage | Convex Agent and AI Gateway usage data |
+| Calculate model cost | Authoritative gateway pricing through `ai-budget` |
+| Limit request frequency | `ai-budget` request limits and Convex Rate Limiter where needed |
+| Enforce spending caps | `ai-budget` reserve-and-settle budget enforcement |
 
-Neutral Cost is a bookkeeper, not a gatekeeper. It can calculate and aggregate
-estimated costs after usage is reported, but the application must separately
-decide whether a request is allowed to run.
+Before an LLM request runs, `ai-budget` reserves its estimated cost against the
+relevant budget. After the response, it settles the reservation using the
+gateway's actual cost. This avoids the concurrency race in a basic
+check-then-spend implementation.
 
-### Why not `ai-budget`?
+The component will also provide:
 
-The Convex `ai-budget` component is designed around the managed Convex AI
-Gateway. The gateway provides centralized admission control and authoritative
-request costs, but it requires an eligible paid Convex plan and does not match
-this project's goal of learning with independently managed provider keys.
+- Per-user dollar, token, and request limits.
+- Cost attribution by user and feature.
+- Budget threshold alerts and one-time increases.
+- Request history, latency data, and replay for model comparisons.
+- An admin dashboard for inspecting usage and spend.
 
-Using provider SDKs directly from Convex actions is an officially supported
-alternative: store API keys in Convex environment variables and call the chosen
-provider from an action.
+Paid non-LLM tools, such as web search, are not gateway model calls. Their costs
+must be tracked and limited separately if the selected tool charges per request.
 
-### Trade-offs of this approach
+### Requirements and trade-offs
 
-Using our own keys and estimated pricing provides more control, but it does not
-provide every guarantee of a gateway-backed budget system:
-
-- Pricing estimates can drift when providers change their prices.
-- A simple check-then-spend budget check can overshoot under concurrent requests.
-- Request replay, threshold alerts, one-time budget increases, and an admin
-  dashboard must be built separately.
-- User, thread, and message attribution must be passed consistently when costs
-  are recorded.
-
-It also enables tracking non-LLM expenses, such as paid web-search tool calls,
-and keeps model/provider selection under application control.
+- The AI Gateway requires an eligible paid Convex plan.
+- It is available on Convex Cloud deployments, not local or self-hosted backends.
+- Model selection is limited to models supported by the gateway.
+- The AI Gateway and `ai-budget` are evolving services and may change while in
+  beta.
 
 > [!IMPORTANT]
-> Never place provider secrets in frontend environment variables or commit them
-> to Git. Configure them for the Convex deployment and access them only from
-> backend actions.
+> Do not add provider API keys to the frontend or repository. This project uses
+> gateway-managed credentials rather than application-managed provider keys.
 
 ## Implementation Roadmap
 
@@ -117,7 +111,7 @@ stage.
 
 - Upload and store PDF files.
 - Extract and chunk document text.
-- Generate embeddings with a provider API key.
+- Generate embeddings through the Convex AI Gateway.
 - Retrieve relevant chunks using hybrid vector and text search.
 
 Embedding calls are separate model requests and must be included in usage and
@@ -138,18 +132,19 @@ cost accounting.
 
 ### 6. Usage and cost controls
 
-- Record token usage for each generation and embedding call.
-- Convert usage to estimated costs with maintained model pricing.
-- Track paid tool calls separately.
-- Add per-user request limits.
-- Check daily or monthly spend before starting expensive work.
-- Build a small usage view by user, thread, model, and feature.
+- Route generation and embedding calls through the Convex AI Gateway.
+- Connect each Agent model through `ai-budget`.
+- Configure per-user dollar, token, and request limits.
+- Set daily or monthly budgets and threshold alerts.
+- Track paid non-LLM tool calls separately.
+- Mount and use the admin dashboard to inspect spend and request history.
 
-### 7. Optional managed-budget comparison
+### 7. Budget testing and operations
 
-If the application later moves to an eligible paid Convex plan, evaluate the AI
-Gateway and `ai-budget`. Compare their reserve-and-settle enforcement with the
-application-level budget checks implemented in stage 6.
+- Verify that over-budget requests fail before reaching a model.
+- Test concurrent requests near a user's spending limit.
+- Replay selected requests with another supported model and compare results.
+- Add an operational process for alerts and one-time budget increases.
 
 ## Current Stack
 
@@ -183,8 +178,8 @@ convex-research-assistant/
 
 - Node.js or Bun supported by the project toolchain
 - pnpm `12.5.1`
-- A Convex account
-- A model-provider API key when AI features are added
+- A Convex team on an eligible paid plan
+- Access to the Convex AI Gateway
 
 ### Install dependencies
 
@@ -202,15 +197,9 @@ Follow the prompts to create or select a Convex project. Copy the public Convex
 environment values generated in `packages/backend/.env.local` to the web app's
 local environment file when prompted by the setup flow.
 
-Provider API keys should be configured as Convex deployment environment
-variables, for example:
-
-```bash
-pnpm --filter @convex-research-assistant/backend exec convex env set PROVIDER_API_KEY your-key
-```
-
-`PROVIDER_API_KEY` is a placeholder. Use the environment variable expected by
-the provider SDK selected during implementation.
+Provider API keys are not configured in this application. Follow the
+[AI Gateway setup guide](https://docs.convex.dev/ai-gateway/setup) to enable the
+gateway for the Convex team and deployment.
 
 ### Start development
 
@@ -238,10 +227,10 @@ Open [http://localhost:3001](http://localhost:3001).
 ## Design Principles
 
 - Build one working vertical slice before adding more agents.
-- Attribute every model and paid-tool call to a user and thread.
-- Check limits before expensive work and record actual usage afterward.
-- Treat locally calculated dollar costs as estimates, not provider invoices.
-- Keep secrets and provider calls on the Convex backend.
+- Attribute every model call to a user and feature through `ai-budget`.
+- Configure budgets before enabling expensive research workflows.
+- Treat paid non-LLM tool usage as a separate cost-control concern.
+- Keep all model and gateway calls on the Convex backend.
 - Add complexity only when the current stage works end to end.
 
 ## References
