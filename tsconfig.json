@@ -1,0 +1,3 @@
+{
+  "extends": "@convex-research-assistant/config/tsconfig.base.json"
+}

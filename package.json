@@ -1,0 +1,44 @@
+{
+  "name": "convex-research-assistant",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "vp run -r dev",
+    "build": "vp run -r build",
+    "check-types": "vp run -r check-types",
+    "check": "oxlint && oxfmt --write",
+    "lint": "vp lint",
+    "format": "vp fmt",
+    "staged": "vp staged",
+    "hooks:setup": "vp config",
+    "dev:web": "vp run --filter web dev:bare",
+    "dev:server": "vp run --filter @convex-research-assistant/backend dev",
+    "dev:setup": "vp run --filter @convex-research-assistant/backend dev:setup",
+    "deploy": "vp run --filter @convex-research-assistant/infra deploy",
+    "destroy": "vp run --filter @convex-research-assistant/infra destroy",
+    "env:generate": "varlock codegen --path ./apps/web/",
+    "postinstall": "varlock codegen --path ./apps/web/"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260906.1",
+    "@convex-research-assistant/config": "workspace:*",
+    "@types/node": "catalog:",
+    "oxfmt": "^0.66.0",
+    "oxlint": "^1.81.0",
+    "rolldown": "1.2.7",
+    "typescript": "catalog:",
+    "varlock": "catalog:",
+    "vite-plus": "0.3.1"
+  },
+  "overrides": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@0.3.1"
+  },
+  "packageManager": "pnpm@12.5.1"
+}
