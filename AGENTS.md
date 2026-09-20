@@ -103,7 +103,7 @@
 `-- vite.config.ts                   # workspace lint/format configuration
 ```
 
-- The tree omits `.git`, `node_modules`, local `.env*` files, generated route trees, build output, and deployment state.
+- The tree omits `.git`, `node_modules`, local `.env*` files, generated files, build output, and deployment state.
 
 ## Architecture
 
