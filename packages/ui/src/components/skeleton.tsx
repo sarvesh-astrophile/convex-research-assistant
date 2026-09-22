@@ -1,4 +1,4 @@
-import { cn } from "@convex-research-assistant/ui/lib/utils";
+import { cn } from "cn";
 
 function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
   return (

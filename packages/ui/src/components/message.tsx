@@ -1,5 +1,5 @@
-import { cn } from "@convex-research-assistant/ui/lib/utils";
 import * as React from "react";
+import { cn } from "cn";
 
 function MessageGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (

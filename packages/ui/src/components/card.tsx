@@ -1,5 +1,5 @@
-import { cn } from "@convex-research-assistant/ui/lib/utils";
 import * as React from "react";
+import { cn } from "cn";
 
 function Card({
   className,
@@ -36,10 +36,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-title"
-      className={cn(
-        "cn-font-heading text-sm font-medium group-data-[size=sm]/card:text-sm",
-        className,
-      )}
+      className={cn("text-sm font-medium group-data-[size=sm]/card:text-sm", className)}
       {...props}
     />
   );
