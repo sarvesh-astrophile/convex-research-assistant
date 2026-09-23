@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { FlaskConical } from "lucide-react";
 
 export default function Header() {
   const links = [
@@ -7,20 +8,30 @@ export default function Header() {
   ] as const;
 
   return (
-    <div>
-      <div className="flex flex-row items-center justify-between px-2 py-1">
-        <nav className="flex gap-4 text-lg">
+    <header className="border-b bg-background">
+      <div className="flex h-11 flex-row items-center justify-between px-3 md:px-4">
+        <Link
+          to="/"
+          className="flex items-center gap-2 text-xs font-semibold tracking-wide uppercase"
+        >
+          <FlaskConical className="size-4" />
+          Convex Research
+        </Link>
+        <nav className="flex items-center gap-3 text-xs text-muted-foreground">
           {links.map(({ to, label }) => {
             return (
-              <Link key={to} to={to}>
+              <Link
+                key={to}
+                to={to}
+                className="transition-colors hover:text-foreground"
+                activeProps={{ className: "text-foreground" }}
+              >
                 {label}
               </Link>
             );
           })}
         </nav>
-        <div className="flex items-center gap-2"></div>
       </div>
-      <hr />
-    </div>
+    </header>
   );
 }

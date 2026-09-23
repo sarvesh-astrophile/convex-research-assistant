@@ -9,7 +9,10 @@
     "dev:setup": "convex dev --configure --until-success"
   },
   "dependencies": {
+    "@convex-dev/agent": "catalog:",
+    "@convex-dev/ai-sdk-provider": "catalog:",
     "@convex-dev/better-auth": "catalog:",
+    "ai": "catalog:",
     "better-auth": "catalog:",
     "convex": "catalog:",
     "zod": "catalog:"
