@@ -1,0 +1,1132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="A beginner-friendly, first-principles guide to persistent chat, multi-agent research, durable workflows, cost controls, and operations in the Convex Research Assistant."
+    />
+    <title>The rest of the machine · Stages 1, 4, 5, 6 &amp; 7</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f6f3ec;
+        --ink: #192a32;
+        --muted: #51636b;
+        --line: #d4dedc;
+        --white: #fffdfa;
+        --teal: #146b67;
+        --teal-light: #e1f2ee;
+        --orange: #ab4e20;
+        --orange-light: #fff0dd;
+        --navy: #18313c;
+        --shadow: 0 16px 48px #192a3210;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font:
+          17px/1.75 system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+      a {
+        color: var(--teal);
+        text-underline-offset: 0.18em;
+      }
+      a:focus-visible,
+      summary:focus-visible {
+        outline: 3px solid var(--orange);
+        outline-offset: 4px;
+      }
+      h1,
+      h2,
+      h3,
+      h4 {
+        line-height: 1.18;
+        letter-spacing: -0.035em;
+      }
+      h1 {
+        font-size: clamp(2.65rem, 7vw, 5.3rem);
+        margin: 0.7rem 0 1.2rem;
+        max-width: 13ch;
+      }
+      h2 {
+        font-size: clamp(2rem, 4vw, 3.05rem);
+        margin: 0 0 1.1rem;
+      }
+      h3 {
+        font-size: clamp(1.35rem, 2.6vw, 1.8rem);
+        margin: 0 0 0.65rem;
+      }
+      h4 {
+        font-size: 1.12rem;
+        margin: 0 0 0.5rem;
+      }
+      p {
+        margin: 0 0 1.15rem;
+      }
+      strong {
+        color: var(--navy);
+      }
+      code {
+        padding: 0.12em 0.35em;
+        border-radius: 0.3rem;
+        background: #e9efed;
+        color: #184d4b;
+        font:
+          0.86em/1.5 ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        overflow-wrap: anywhere;
+      }
+      pre {
+        overflow: auto;
+        padding: 1.1rem 1.3rem;
+        border-radius: 0.65rem;
+        background: #182d34;
+        color: #e6f5f0;
+        font:
+          0.86rem/1.65 ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+      }
+      pre code {
+        padding: 0;
+        background: transparent;
+        color: inherit;
+      }
+      .skip {
+        position: absolute;
+        top: -6rem;
+        left: 1rem;
+        padding: 0.6rem;
+        background: white;
+        z-index: 10;
+      }
+      .skip:focus {
+        top: 1rem;
+      }
+      .wrap {
+        width: min(100% - 2rem, 1170px);
+        margin-inline: auto;
+      }
+      .hero {
+        padding: clamp(3rem, 8vw, 7rem) 0 4rem;
+        background:
+          radial-gradient(circle at 85% 12%, #cfe9e1, transparent 36%),
+          linear-gradient(135deg, #fbfaf6, #eaf1eb);
+        border-bottom: 1px solid var(--line);
+      }
+      .eyebrow {
+        color: var(--teal);
+        font-size: 0.78rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+      }
+      .hero-lead {
+        max-width: 68ch;
+        color: var(--muted);
+        font-size: clamp(1.12rem, 2.4vw, 1.45rem);
+      }
+      .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+        margin-top: 1.6rem;
+      }
+      .badge {
+        display: inline-block;
+        border: 1px solid #aac6bf;
+        background: #ffffffaa;
+        border-radius: 10rem;
+        padding: 0.3rem 0.8rem;
+        font-size: 0.81rem;
+        font-weight: 700;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 225px minmax(0, 1fr);
+        gap: clamp(1.8rem, 5vw, 5rem);
+        padding-block: 3rem 6rem;
+        align-items: start;
+      }
+      .toc {
+        position: sticky;
+        top: 1.5rem;
+        padding: 1.2rem;
+        border: 1px solid var(--line);
+        background: var(--white);
+        border-radius: 0.85rem;
+        font-size: 0.85rem;
+      }
+      .toc strong {
+        display: block;
+        margin-bottom: 0.7rem;
+      }
+      .toc a {
+        display: block;
+        margin: 0.45rem 0;
+        color: var(--muted);
+        text-decoration: none;
+      }
+      .toc a:hover {
+        color: var(--teal);
+        text-decoration: underline;
+      }
+      main {
+        min-width: 0;
+      }
+      section {
+        scroll-margin-top: 2rem;
+        padding: 0 0 3rem;
+        margin-bottom: 3rem;
+        border-bottom: 1px solid var(--line);
+      }
+      section:last-child {
+        border-bottom: 0;
+      }
+      .section-label {
+        margin-bottom: 0.55rem;
+        color: var(--orange);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+      }
+      .question {
+        margin: 2rem 0 1.2rem;
+        padding-left: 1rem;
+        border-left: 4px solid var(--teal);
+        font-size: 1.18rem;
+        font-weight: 750;
+        line-height: 1.4;
+      }
+      .root {
+        margin: 1.65rem 0;
+        border-radius: 0.75rem;
+        padding: 1.2rem 1.4rem;
+        background: var(--orange-light);
+        border: 1px solid #e8bb8d;
+      }
+      .root p:last-child,
+      .callout p:last-child,
+      .card p:last-child {
+        margin-bottom: 0;
+      }
+      .root strong {
+        color: #713916;
+      }
+      .callout {
+        padding: 1.15rem 1.35rem;
+        border-radius: 0.75rem;
+        background: var(--teal-light);
+        border: 1px solid #a6d0c5;
+        margin: 1.5rem 0;
+      }
+      .callout.warn {
+        background: var(--orange-light);
+        border-color: #e8bb8d;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+        margin: 1.4rem 0;
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 0.8rem;
+        background: var(--white);
+        padding: 1.25rem;
+        box-shadow: var(--shadow);
+      }
+      .card .number {
+        display: inline-block;
+        color: var(--teal);
+        font-size: 0.78rem;
+        letter-spacing: 0.1em;
+        font-weight: 800;
+        margin-bottom: 0.6rem;
+      }
+      .steps {
+        counter-reset: step;
+        list-style: none;
+        margin: 1.5rem 0;
+        padding: 0;
+      }
+      .steps li {
+        counter-increment: step;
+        position: relative;
+        margin: 0 0 0.9rem;
+        padding: 1rem 1.15rem 1rem 3.9rem;
+        border: 1px solid var(--line);
+        background: var(--white);
+        border-radius: 0.7rem;
+      }
+      .steps li::before {
+        content: counter(step);
+        position: absolute;
+        left: 1rem;
+        top: 0.9rem;
+        width: 1.9rem;
+        height: 1.9rem;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--teal);
+        color: white;
+        font-size: 0.82rem;
+        font-weight: 800;
+      }
+      .steps p {
+        margin: 0.3rem 0 0;
+        color: var(--muted);
+      }
+      .flow {
+        margin: 1.5rem 0;
+        padding: 1.25rem;
+        background: #203942;
+        color: #e8f4ee;
+        border-radius: 0.85rem;
+        font:
+          0.83rem/1.8 ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        overflow-x: auto;
+        white-space: pre;
+      }
+      .table-wrap {
+        overflow-x: auto;
+        margin: 1.5rem 0;
+        border: 1px solid var(--line);
+        border-radius: 0.75rem;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 620px;
+        font-size: 0.87rem;
+        line-height: 1.5;
+        background: var(--white);
+      }
+      th,
+      td {
+        padding: 0.8rem 0.95rem;
+        text-align: left;
+        vertical-align: top;
+        border-bottom: 1px solid var(--line);
+      }
+      th {
+        color: #fff;
+        background: var(--navy);
+      }
+      tr:last-child td {
+        border-bottom: 0;
+      }
+      ul {
+        padding-left: 1.3rem;
+      }
+      li {
+        margin-bottom: 0.55rem;
+      }
+      details {
+        border: 1px solid var(--line);
+        background: var(--white);
+        border-radius: 0.75rem;
+        padding: 0.85rem 1.1rem;
+        margin: 0.8rem 0;
+      }
+      summary {
+        cursor: pointer;
+        font-weight: 750;
+      }
+      details p {
+        margin-top: 0.85rem;
+      }
+      footer {
+        padding: 2rem 0 3rem;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.84rem;
+      }
+      @media (max-width: 810px) {
+        .layout {
+          grid-template-columns: 1fr;
+          padding-top: 1.3rem;
+        }
+        .toc {
+          position: static;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.3rem 1rem;
+        }
+        .toc strong {
+          width: 100%;
+        }
+        .toc a {
+          margin: 0;
+        }
+      }
+      @media (max-width: 570px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        body {
+          font-size: 16px;
+        }
+        .steps li {
+          padding-left: 3.3rem;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to explanation</a>
+    <header class="hero" id="top">
+      <div class="wrap">
+        <div class="eyebrow">Convex Research Assistant · a first-principles field guide</div>
+        <h1>The rest of the machine</h1>
+        <p class="hero-lead">
+          The companion page covered web and PDF evidence. This page covers everything holding it
+          together: the memory of Stage 1, the agent team of Stage 4, the durable workflow of Stage
+          5, the money guard of Stage 6, and the operations of Stage 7. Same method: start with the
+          problem, find the root cause, then ask our way to the solution.
+        </p>
+        <div class="hero-badges">
+          <span class="badge">Stage 1 · Memory</span><span class="badge">Stage 4 · Agent team</span
+          ><span class="badge">Stage 5 · Durability</span><span class="badge">Stage 6 · Budget</span
+          ><span class="badge">Stage 7 · Operations</span>
+        </div>
+      </div>
+    </header>
+    <div class="wrap layout">
+      <nav class="toc" aria-label="On this page">
+        <strong>Follow the questions</strong>
+        <a href="#memory">What does Stage 1 give us?</a>
+        <a href="#message-life">How does a message survive?</a>
+        <a href="#team">Why isn't one agent enough?</a>
+        <a href="#run">Follow a research run</a>
+        <a href="#durable">Why must work outlive the tab?</a>
+        <a href="#money">Why are budgets hard?</a>
+        <a href="#reserve">Follow one reservation</a>
+        <a href="#ops">How do we operate it?</a>
+        <a href="#files">Which files matter?</a>
+        <a href="#truth">What is actually verified?</a>
+      </nav>
+      <main id="main">
+        <section id="memory">
+          <div class="section-label">00 / Stage 1 · The problem</div>
+          <h2>What does Stage 1 actually give us?</h2>
+          <p>
+            Picture a brilliant friend with amnesia. Every conversation is wonderful, and every
+            conversation is gone the moment you close the door. That is a plain model API. It can
+            answer, but it cannot remember.
+          </p>
+          <p>
+            So the first problem is not intelligence. It is <strong>continuity</strong>. We want to
+            ask a question today, come back tomorrow, and still see the whole exchange.
+          </p>
+          <p class="question">Why not just keep the messages in the browser?</p>
+          <p>
+            Because the browser is not yours. Tabs close, devices change, and a refresh would erase
+            everything. Worse, a model reply takes time and can fail partway. We need a place where
+            a half-finished answer can be resumed and a finished one can live forever.
+          </p>
+          <div class="root">
+            <strong>Root cause:</strong> conversation state must live somewhere durable, owned by
+            the signed-in user, and reachable from any device. The browser is a viewer, not a vault.
+          </div>
+          <p class="question">So how do we give the assistant a durable memory?</p>
+          <p>
+            Two cooperating pieces. The Agent component stores the raw thread: messages, tool calls,
+            and streaming pieces. Our own <code>researchSessions</code> table stores the
+            application’s view of that thread: who owns it, what it is called, and whether it is
+            busy, done, or broken. One string, <code>threadId</code>, ties them together.
+          </p>
+          <div class="grid">
+            <div class="card">
+              <span class="number">AGENT COMPONENT</span>
+              <h3>The conversation itself</h3>
+              <p>
+                Threads, user messages, assistant messages, streamed deltas, and tool activity. We
+                do not hand-roll this; the component is built for exactly this job.
+              </p>
+            </div>
+            <div class="card">
+              <span class="number">researchSessions</span>
+              <h3>Our view of the conversation</h3>
+              <p>
+                <code>userId</code>, <code>threadId</code>, <code>mode</code>, <code>title</code>,
+                <code>status</code>, and timestamps. This is what the sidebar lists and what
+                authorization checks.
+              </p>
+            </div>
+          </div>
+          <p>
+            <strong>Analogy:</strong> the Agent component is the library that stores the books; our
+            <code>researchSessions</code> row is the library card in your name, with a due-date
+            sticker that says “busy” or “finished.”
+          </p>
+        </section>
+
+        <section id="message-life">
+          <div class="section-label">01 / Stage 1 · Follow one message</div>
+          <h2>How does a message survive a refresh?</h2>
+          <ol class="steps">
+            <li>
+              <strong>You press Send.</strong>
+              <p>
+                <code>chat.sendMessage</code> verifies the session exists and belongs to you. It
+                also checks the thread ID matches, so you cannot write into someone else’s
+                conversation by guessing an ID.
+              </p>
+            </li>
+            <li>
+              <strong>The prompt is saved before anything else.</strong>
+              <p>
+                <code>saveMessage</code> writes your words into the Agent thread. Why first? If the
+                model call fails or the browser dies, your question still exists. The scheduler also
+                checks the per-user rate limit here, before we spend anything.
+              </p>
+            </li>
+            <li>
+              <strong>The session is marked busy.</strong>
+              <p>
+                The status flips to <code>running</code>, and the title is set from your first
+                message (if you had not renamed it). A second message while <code>running</code> is
+                rejected server-side, not just disabled in the UI.
+              </p>
+            </li>
+            <li>
+              <strong>Generation moves to a background action.</strong>
+              <p>
+                <code>ctx.scheduler.runAfter(0, internal.chat.streamResponse, …)</code> hands the
+                heavy work to an action. Actions can call the model and stream; mutations should
+                stay short and transactional. This is the boundary between “record the request” and
+                “do the expensive thing.”
+              </p>
+            </li>
+            <li>
+              <strong>The reply streams as deltas.</strong>
+              <p>
+                <code>streamText</code> with <code>saveStreamDeltas</code> writes each chunk of text
+                into the thread as it arrives. The UI subscribes with <code>useUIMessages</code> and
+                folds those deltas into the visible message, so tokens appear live without any
+                WebSocket of our own.
+              </p>
+            </li>
+            <li>
+              <strong>The session is marked done or failed.</strong>
+              <p>
+                After the stream is consumed, <code>finishResponse</code> patches the status to
+                <code>completed</code> or <code>failed</code>. On reload, the same query returns the
+                persisted messages and the UI looks exactly as you left it.
+              </p>
+            </li>
+          </ol>
+          <div class="flow">
+            Send ──→ verify owner ──→ save prompt ──→ status "running" │ └──→ schedule action ──→
+            stream deltas into thread ──→ status done/failed │ └──→ UI subscribes reactively;
+            refresh re-reads the same persisted thread
+          </div>
+          <p class="question">
+            Why schedule a separate action instead of streaming inside the mutation?
+          </p>
+          <p>
+            Convex mutations are transactions: short, deterministic, and rolled back on error. A
+            model call is slow, can fail, and produces side effects. Mixing them would mean a failed
+            generation could erase the saved prompt. Separating them means the record commits first
+            and the expensive work runs safely afterward.
+          </p>
+          <div class="callout">
+            <strong>The first-principles takeaway:</strong> “streaming” here is not a transport we
+            invented. It is durable state written incrementally, which the UI reads reactively. That
+            is why a refresh mid-answer still shows the partial reply.
+          </div>
+        </section>
+
+        <section id="team">
+          <div class="section-label">02 / Stage 4 · The problem</div>
+          <h2>Why isn’t a single assistant enough for a research report?</h2>
+          <p>
+            One agent with tools can search and answer. So why add complexity? Try asking it to
+            compare broad topic A against broad topic B. It tends to answer the first topic, then
+            the second, in one breath, with shallow evidence for each.
+          </p>
+          <p class="question">Why does one agent get shallow on a big question?</p>
+          <p>
+            Because it is doing several different jobs in one pass: decide what to investigate, go
+            investigate, write it up, and check itself. Each job wants a different mindset. Doing
+            them all at once spreads attention thin.
+          </p>
+          <div class="root">
+            <strong>Root cause:</strong> “plan, research, write, and verify” are distinct skills.
+            One prompt trying to do all four at once produces a mediocre version of each.
+          </div>
+          <p class="question">What if we give each job its own agent?</p>
+          <p>
+            That is the team of Stage 4. Four roles, all using the same configured model, each with
+            one clear instruction:
+          </p>
+          <div class="grid">
+            <div class="card">
+              <span class="number">ROLE 1</span>
+              <h3>Planner</h3>
+              <p>
+                Breaks your question into at most three independent sub-tasks. It returns strict
+                JSON, and invalid output is rejected rather than passed on.
+              </p>
+            </div>
+            <div class="card">
+              <span class="number">ROLE 2</span>
+              <h3>Researchers</h3>
+              <p>
+                One per sub-task, running in parallel. Each does a web search and a PDF search, then
+                summarizes only the evidence it was handed.
+              </p>
+            </div>
+            <div class="card">
+              <span class="number">ROLE 3</span>
+              <h3>Writer</h3>
+              <p>
+                Combines the findings into a cited report with inline <code>[n]</code> markers. This
+                is the only role whose output streams to you as a message.
+              </p>
+            </div>
+            <div class="card">
+              <span class="number">ROLE 4</span>
+              <h3>Fact-checker</h3>
+              <p>
+                Reads the report against the findings and flags unsupported or contradictory claims.
+                It annotates only — it never rewrites or re-researches.
+              </p>
+            </div>
+          </div>
+          <p class="question">Why keep the other roles’ output out of the chat?</p>
+          <p>
+            If every internal thought appeared as a chat message, your thread would drown in
+            scratch-work. The plan, findings, and critique go into an
+            <code>researchArtifacts</code> table and appear as a collapsible timeline. Only the
+            finished report joins the conversation. You get a clean thread and a full audit trail.
+          </p>
+          <div class="callout">
+            <strong>Analogy:</strong> an editor does not print every reporter’s notes in the
+            newspaper. The finished article goes in the paper; the notes live in the newsroom for
+            anyone who wants to check them.
+          </div>
+        </section>
+
+        <section id="run">
+          <div class="section-label">03 / Stage 4 · Follow a research run</div>
+          <h2>What happens when I ask a research question?</h2>
+          <p>
+            A research session is created with mode <code>research</code>. When you send a question,
+            <code>chat.sendMessage</code> notices the mode and hands off to
+            <code>beginResearch</code> instead of the normal single-assistant path.
+          </p>
+          <ol class="steps">
+            <li>
+              <strong>One run per session, guaranteed.</strong>
+              <p>
+                <code>beginResearch</code> looks at the newest run for this session. If any run is
+                still active (pending, planning, researching, writing, or verifying), it refuses to
+                start another. Concurrency is enforced by the data, not by trusting the button.
+              </p>
+            </li>
+            <li>
+              <strong>The run is recorded, then the workflow starts.</strong>
+              <p>
+                A <code>researchRuns</code> row is inserted with status <code>pending</code> and the
+                workflow ID is saved. From here the work continues on the server even if you close
+                the tab.
+              </p>
+            </li>
+            <li>
+              <strong>Planning.</strong>
+              <p>
+                The Planner returns up to three tasks as parse-checked JSON. The validated plan is
+                stored as a <code>plan</code> artifact.
+              </p>
+            </li>
+            <li>
+              <strong>Researching, in parallel.</strong>
+              <p>
+                Each task runs its own action concurrently. Each one reserves a search, queries Exa,
+                saves numbered sources, queries the PDFs, then asks the Researcher to summarize the
+                evidence. Findings are stored as <code>finding</code> artifacts. Search calls are
+                capped per run.
+              </p>
+            </li>
+            <li>
+              <strong>Writing.</strong>
+              <p>
+                Sources are linked to the run, findings are gathered, and the Writer streams the
+                final report directly into your Agent thread. Its full text is also stored as a
+                <code>draft</code> artifact.
+              </p>
+            </li>
+            <li>
+              <strong>Verifying.</strong>
+              <p>
+                The Fact-checker compares the report to the findings and stores a
+                <code>critique</code> artifact. Then the run and session settle to
+                <code>completed</code>.
+              </p>
+            </li>
+          </ol>
+          <div class="flow">
+            question ──→ beginResearch (one active run rule) ──→ workflow │ ├─ plan → plan artifact
+            ├─ research ×N → finding artifacts + sources (parallel, capped) ├─ write → streamed
+            report + draft artifact └─ verify → critique artifact │ └─ run/session → completed |
+            failed | cancelled
+          </div>
+          <p class="question">Why is the report the only thing streamed to the thread?</p>
+          <p>
+            Because the report is what you asked for. Everything else is scaffolding. Keeping the
+            scaffolding in artifacts means you can reopen the run later and inspect exactly how the
+            conclusion was reached, without cluttering the conversation.
+          </p>
+          <details>
+            <summary>What does the timeline show?</summary>
+            <p>
+              For a research session the dashboard renders a collapsible timeline with five phases:
+              planning, researching, writing, verifying, completed. Below it, each artifact (plan,
+              findings, draft, critique) opens to show its stored payload. An active run can be
+              cancelled; a failed run can be restarted.
+            </p>
+          </details>
+        </section>
+
+        <section id="durable">
+          <div class="section-label">04 / Stage 5 · The problem</div>
+          <h2>Why must the work outlive the browser tab?</h2>
+          <p>
+            Imagine a research run that takes two minutes. You start it, then close the laptop to
+            grab coffee. If the work lived in the page, closing the page would kill it. You would
+            return to nothing.
+          </p>
+          <p class="question">Why is a normal background action not enough?</p>
+          <p>
+            A single long action is fragile. If the machine restarts mid-run, or one step throws a
+            transient network error, the whole run is lost with no memory of how far it got. There
+            is no resume point.
+          </p>
+          <div class="root">
+            <strong>Root cause:</strong> multi-step work needs a checkpoint after every step, so it
+            can be replayed from where it stopped instead of starting over. That is what makes it
+            “durable.”
+          </div>
+          <p class="question">How do we get checkpoints without writing them ourselves?</p>
+          <p>
+            We describe the run as a sequence of <strong>steps</strong> with the Workflow component.
+            Each step is an ordinary Convex function. The component records each step’s result in a
+            journal, and on a retry it replays the handler and skips the steps that already
+            succeeded.
+          </p>
+          <pre><code>run define({ runId })
+  advance → planning
+  plan        (action, retry on transient failure)
+  advance → researching
+  research ×N (actions, in parallel via Promise.all)
+  advance → writing
+  write       (action, no retry — it streams)
+  advance → verifying
+  verify      (action, retry)</code></pre>
+          <p>
+            This is also why a run can be cancelled and later <em>restarted from a chosen step</em>:
+            the journal knows what already completed.
+          </p>
+          <p class="question">What tells the app the run is finished?</p>
+          <p>
+            When the workflow completes, its <code>onComplete</code> handler runs
+            <code>research.complete</code>. That mutation reads the workflow result and settles both
+            the <code>researchRuns</code> row and the session status. Because the status lives in
+            the database, the UI updates reactively when you reopen the page — no polling loop
+            needed.
+          </p>
+          <div class="callout warn">
+            <strong>Important nuance:</strong> the writer step deliberately does not retry. A
+            streamed report is not something we want to silently duplicate. The retry-friendly steps
+            are the ones that are safe to re-run (plan, research, verify).
+          </div>
+          <p class="question">What stops two research runs colliding?</p>
+          <p>
+            Two guards. <code>beginResearch</code> refuses to start if an active run already exists,
+            and <code>retryRun</code> refuses to restart if the session is already
+            <code>running</code>. Both are database checks inside mutations, so simultaneous clicks
+            cannot both win.
+          </p>
+        </section>
+
+        <section id="money">
+          <div class="section-label">05 / Stage 6 · The problem</div>
+          <h2>Why is a spending cap surprisingly hard?</h2>
+          <p>
+            Suppose you give each user $5 a month. The obvious plan: before a model call, add up
+            what they have spent; if there is room, make the call; afterward, add the real cost. It
+            sounds fine. It is not.
+          </p>
+          <p class="question">What goes wrong with “check, then spend”?</p>
+          <p>
+            Two requests arrive at almost the same moment. Both read “$4.90 spent of $5.00.” Both
+            see about ten cents of room. Both proceed. Now the user has spent past the cap, and the
+            check did nothing to stop it. Multiply that by a burst of parallel research tasks and
+            the overshoot is large.
+          </p>
+          <div class="root">
+            <strong>Root cause:</strong> checking and spending are two separate moments. Between
+            them, other requests can slip through the same gap. A correct cap must <em>claim</em>
+            the money before the call, not check it and hope.
+          </div>
+          <p class="question">What is the smallest fix?</p>
+          <p>
+            Combine the check and the claim into a single transaction:
+            <strong>reserve, then settle</strong>. Before a call we estimate its worst-case cost and
+            add it to a “reserved” bucket in the same mutation that verifies there is room. The call
+            runs only if the reservation succeeded. When it finishes, we release the hold and move
+            the real cost into “spent.”
+          </p>
+          <div class="grid">
+            <div class="card">
+              <span class="number">STEP 1 · RESERVE</span>
+              <h3>Claim the maximum up front</h3>
+              <p>
+                One mutation checks <code>spent + reserved + estimate ≤ cap</code> and, if it
+                passes, increases <code>reserved</code>. Because Convex mutations are serializable,
+                simultaneous requests see each other’s holds.
+              </p>
+            </div>
+            <div class="card">
+              <span class="number">STEP 2 · SETTLE</span>
+              <h3>Move the real cost in after</h3>
+              <p>
+                When the call returns, we subtract the hold and add the actual token-based cost. If
+                the call failed with no usage, we charge the full hold, because a provider may still
+                have billed it.
+              </p>
+            </div>
+          </div>
+          <p class="question">Why reserve the worst case and not a guess?</p>
+          <p>
+            Because the whole point is to guarantee we never overspend. If we reserved a small
+            average and the model produced a long answer, the real cost could exceed the hold and
+            cross the cap. Reserving the maximum means a single call can never surprise the budget.
+            The trade-off is the opposite: we may briefly block money that would not actually be
+            spent. Stage 6 chose safety over perfect liquidity.
+          </p>
+          <p class="question">What is the unit of money here?</p>
+          <p>
+            Integer <strong>nanodollars</strong> (one billion per dollar), never floating-point
+            cents. Floats drift when you add thousands of tiny fractions; integers do not. The
+            comparison at the heart of the cap stays exact.
+          </p>
+          <div class="callout warn">
+            <strong>Current limits of this design:</strong> the app computes cost from configured
+            per-token prices, not from the gateway’s authoritative bill. The published
+            <code>@convex-dev/ai-budget</code> package was upgraded to its
+            <code>1.0.0-rc.0</code> release, but the enforced monthly cap lives in our own ledger.
+            See “What is actually verified” for the honest gap.
+          </div>
+        </section>
+
+        <section id="reserve">
+          <div class="section-label">06 / Stage 6 · Follow one reservation</div>
+          <h2>What happens around a single chat reply?</h2>
+          <ol class="steps">
+            <li>
+              <strong>Pick a price, or fail closed.</strong>
+              <p>
+                <code>modelPrice</code> returns USD-per-million-token rates for known models. An
+                unknown model throws instead of being treated as free, so a typo cannot dodge the
+                cap. Rates can be extended with <code>GATEWAY_MODEL_PRICES_JSON</code>.
+              </p>
+            </li>
+            <li>
+              <strong>Reserve the worst case.</strong>
+              <p>
+                <code>budget.reserve</code> computes
+                <code>estimate = (inputTokens × inputPrice + outputTokens × outputPrice)</code> and
+                tests it against the user’s monthly account. The chat path reserves a deliberately
+                generous ceiling (4,000,000 input and 8,000 output tokens) even though the actual
+                generation is capped at 2,000 output tokens.
+              </p>
+            </li>
+            <li>
+              <strong>If there is no room, stop before the model.</strong>
+              <p>
+                A failed reservation throws before <code>streamText</code> is ever called. That is
+                the “hard fail before the call” rule: we never start work we cannot pay for.
+              </p>
+            </li>
+            <li>
+              <strong>Run the call through the gateway.</strong>
+              <p>
+                The model is created with <code>ai.languageModel(ctx, …)</code>, which routes the
+                request through the Convex AI Gateway and records it for the budget component’s own
+                audit log and dashboard.
+              </p>
+            </li>
+            <li>
+              <strong>Settle with real usage.</strong>
+              <p>
+                <code>budget.settle</code> reads the token usage, subtracts the hold, adds the real
+                cost to <code>spent</code>, writes a <code>usageLedger</code> row tagged with the
+                feature, and evaluates alert thresholds.
+              </p>
+            </li>
+            <li>
+              <strong>Alerts fire once per threshold.</strong>
+              <p>
+                If spending crosses 80% or 100% of the cap, a <code>budgetAlerts</code> row is
+                written — but only if one for that threshold and month does not already exist. A
+                unique index makes “once per period” true even under concurrency.
+              </p>
+            </li>
+          </ol>
+          <div class="flow">
+            reserve ──→ spent + reserved + estimate ≤ cap ? ──no──→ fail before the model │ yes │
+            └──→ model call (gateway, recorded) ──→ settle │ ├─ reserved −= hold ├─ spent += real
+            cost ├─ usageLedger row (feature, tokens, cost) └─ alerts: first crossing per
+            threshold/month
+          </div>
+          <p class="question">What if a call never reports back?</p>
+          <p>
+            A hold could otherwise stay forever. A cron job runs every five minutes and settles
+            reservations older than fifteen minutes as “failed,” charging the held maximum. That
+            keeps the cap honest when a run dies without settling.
+          </p>
+          <p class="question">How do rate limits fit alongside spending limits?</p>
+          <p>
+            They answer a different question. The budget asks “how much,” the rate limiter asks “how
+            often.” <code>limits.ts</code> defines a fixed window of 30 chat messages per minute and
+            10 research runs per hour, per user, enforced in <code>sendMessage</code> before
+            anything is saved or spent.
+          </p>
+        </section>
+
+        <section id="ops">
+          <div class="section-label">07 / Stage 7 · Operations</div>
+          <h2>How do we run and inspect this thing?</h2>
+          <p>
+            A cap is only useful if a human can see it and adjust it. Stage 7 is the operational
+            layer: who is the admin, how a one-time increase is granted, how a past request is
+            replayed, and what happens when content is deleted.
+          </p>
+          <h3>Who is the admin?</h3>
+          <p>
+            Not a database role. The single deployment variable <code>ADMIN_EMAIL</code> is compared
+            (case-insensitively) against the signed-in user’s email in <code>requireAdmin</code>.
+            Set it, and that account can read cross-user budgets and grant increases; nobody else
+            can. Changing it is a one-line deployment change, which fits the spec’s “single admin”
+            decision.
+          </p>
+          <h3>Granting a one-time increase</h3>
+          <p>
+            At <code>/admin</code>, the admin sees each user’s <code>spent</code>,
+            <code>reserved</code>, and <code>added</code> amounts for the current UTC month, then
+            can add an amount with a reason. The increase is added to <code>increaseNanos</code>,
+            which the reservation check treats as extra headroom on top of the standing cap. Every
+            grant is also written to <code>budgetIncreases</code> with who granted it and why.
+          </p>
+          <div class="callout">
+            <strong>Why a ledger row for every increase?</strong> Money moved by a human needs a
+            paper trail. The account shows the resulting balance; the increases table shows how it
+            got there.
+          </div>
+          <h3>Replaying a recorded request with another model</h3>
+          <p>
+            The budget component keeps a short-lived audit log of model requests. The dashboard’s
+            replay panel lists the current user’s recent requests, lets them pick a model from the
+            <code>GATEWAY_COMPARISON_MODEL_IDS</code> allowlist, and re-runs the original messages.
+            The comparison is billed to the same user, and the result reports the comparison text,
+            its cost, and its latency.
+          </p>
+          <p class="question">Why an allowlist and not any model?</p>
+          <p>
+            Because an arbitrary model could be far more expensive or unsupported. Restricting
+            comparison to an explicit allowlist keeps experimentation inside the operator’s chosen
+            budget envelope.
+          </p>
+          <h3>Deleting a conversation safely</h3>
+          <p>
+            Deleting a session is not just a row delete. The <code>sessions.remove</code> flow
+            cancels any active workflow, deletes the session row, and schedules batched cleanup of
+            documents, chunks, sources, artifacts, and runs. The Agent thread is deleted
+            asynchronously too. Crucially, <strong>usage and tool cost rows are kept</strong>, so
+            accounting history survives even when content is gone.
+          </p>
+          <p class="question">Why keep cost history after deleting content?</p>
+          <p>
+            Because spend already happened. Erasing the conversation should not erase the fact that
+            money was spent, or the monthly cap could be reset by deleting old threads.
+          </p>
+          <h3>The built-in budget dashboard</h3>
+          <p>
+            The budget component ships its own admin dashboard. It is mounted in
+            <code>http.ts</code> with <code>ai.registerRoutes(http)</code> and gated by the
+            <code>AI_BUDGET_DASHBOARD_TOKEN</code> deployment variable. Because the HTML page loads
+            without an auth header, a token is used instead of a user identity check. Without the
+            token configured, the route returns <code>401</code>.
+          </p>
+          <details>
+            <summary>Operational variables to know</summary>
+            <p>
+              <code>GATEWAY_MODEL_ID</code> (model), <code>EXA_API_KEY</code> (web search),
+              <code>BUDGET_MONTHLY_USD_DEFAULT</code> (the cap; calls fail closed without it),
+              <code>ADMIN_EMAIL</code> (the single admin),
+              <code>GATEWAY_COMPARISON_MODEL_IDS</code> (replay allowlist), and optional knobs for
+              rate limits, task caps, report tokens, and file limits.
+              <code>AI_BUDGET_DASHBOARD_TOKEN</code> gates the built-in dashboard. Email
+              verification is intentionally disabled in <code>auth.ts</code>, which diverges from
+              the full spec.
+            </p>
+          </details>
+        </section>
+
+        <section id="files">
+          <div class="section-label">08 / Where to look</div>
+          <h2>Which files carry these stages?</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Stage</th>
+                  <th>Files</th>
+                  <th>Why they exist</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1 · Chat</td>
+                  <td>
+                    <code>chat.ts</code>, <code>sessions.ts</code>, <code>assistant.ts</code>,
+                    <code>schema.ts</code>
+                  </td>
+                  <td>Own the session, persist messages, stream replies, gate authorization.</td>
+                </tr>
+                <tr>
+                  <td>4 · Agents</td>
+                  <td>
+                    <code>researchSteps.ts</code>, <code>research.ts</code>,
+                    <code>planner.ts</code>
+                  </td>
+                  <td>Define the four roles, run them, and store their artifacts.</td>
+                </tr>
+                <tr>
+                  <td>5 · Workflow</td>
+                  <td>
+                    <code>researchFlow.ts</code>, <code>research.ts</code>, <code>crons.ts</code>
+                  </td>
+                  <td>
+                    Describe the durable step pipeline, settle completion, and reap stale work.
+                  </td>
+                </tr>
+                <tr>
+                  <td>6 · Budget</td>
+                  <td>
+                    <code>budget.ts</code>, <code>budgetLogic.ts</code>, <code>limits.ts</code>
+                  </td>
+                  <td>Reserve, settle, alert, and rate-limit every paid call.</td>
+                </tr>
+                <tr>
+                  <td>7 · Ops</td>
+                  <td>
+                    <code>admin.ts</code>, <code>replay.ts</code>, <code>http.ts</code>,
+                    <code>OPERATIONS.md</code>
+                  </td>
+                  <td>Admin increases, replay, dashboard mounting, and the runbook.</td>
+                </tr>
+                <tr>
+                  <td>Tests</td>
+                  <td>
+                    <code>budget.test.ts</code>, <code>logic.test.ts</code>,
+                    <code>chunking.ts</code>, <code>retrievalRank.ts</code>
+                  </td>
+                  <td>Prove reservation, caps, chunking, fusion, and planner limits.</td>
+                </tr>
+                <tr>
+                  <td>UI</td>
+                  <td><code>dashboard.tsx</code>, <code>admin.tsx</code></td>
+                  <td>Render the timeline, replay panel, budget readout, and admin form.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="truth">
+          <div class="section-label">09 / What is real today?</div>
+          <h2>What is actually verified?</h2>
+          <p>
+            Code can pass checks and still not run. So here is the honest split between “checked
+            mechanically” and “still needs a live run.”
+          </p>
+          <div class="callout">
+            <strong>Verified locally and in CI-style checks:</strong>
+            <code>pnpm run lint</code>, <code>pnpm run check-types</code>, backend <code>tsc</code>,
+            <code>pnpm run build</code>, and
+            <code>pnpm --filter @convex-research-assistant/backend test</code> (8 tests). The tests
+            cover the UTC month boundary, in-flight reservation math, that two simultaneous holds
+            cannot both enter a budget, that an exhausted budget blocks before a fake model is
+            called, chunk-page overlap, reciprocal-rank fusion, the planner task cap, and that a
+            research run records ordered progress and artifacts.
+          </div>
+          <div class="callout">
+            <strong>Verified against Convex Cloud:</strong> the functions deploy cleanly to the dev
+            deployment, and the built-in budget dashboard returns <code>401</code> without its token
+            and <code>200</code> with it.
+          </div>
+          <div class="callout warn">
+            <strong>Not yet verified live:</strong> an actual multi-agent research run producing a
+            streamed cited report, a real over-budget rejection against the gateway, and a real
+            cross-model replay. Those need an authenticated browser session and configured provider
+            keys. Do not claim the spec’s acceptance criteria from typechecks alone.
+          </div>
+          <details>
+            <summary>Known gaps and divergences</summary>
+            <p>
+              Email verification is disabled, diverging from spec section 10. Model cost is computed
+              from configured token prices rather than the gateway’s authoritative bill, and the
+              hard cap is enforced by the app’s own ledger rather than the budget component (the
+              published component was an old alpha; it was upgraded to <code>1.0.0-rc.0</code>).
+              Because the component’s request log is short-lived by default, replay only works while
+              the original request is still retained. A retried research action can reserve and
+              charge again if a provider call succeeded but its artifact commit failed. Image-only
+              PDFs still have no OCR. These are documented in <code>OPERATIONS.md</code>.
+            </p>
+          </details>
+          <p>
+            <strong>One-sentence takeaway:</strong> Stage 1 gives the assistant durable memory;
+            Stage 4 gives it a team; Stage 5 makes the team’s work survive interruption; Stage 6
+            stops it from overspending; and Stage 7 lets a human watch, adjust, and audit the whole
+            thing.
+          </p>
+        </section>
+      </main>
+    </div>
+    <footer class="wrap">
+      A standalone companion to <code>STAGE_2_3_EXPLAINER.html</code> and the implementation in
+      <code>SPEC.md</code> · <a href="#top">Back to the beginning</a>
+    </footer>
+  </body>
+</html>
