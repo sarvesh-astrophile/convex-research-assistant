@@ -8,6 +8,7 @@ allowBuilds:
   sharp: true
   msgpackr-extract: true
   workerd: true
+  canvas: set this to true or false
 catalog:
   zod: ^4.5.4
   typescript: ^6.0.3
@@ -24,6 +25,8 @@ catalog:
   "@convex-dev/better-auth": ^0.12.5
   "@convex-dev/agent": ^0.7.3
   "@convex-dev/ai-sdk-provider": ^0.2.1
+  "@exalabs/convex-exa": 0.1.1
+  unpdf: ^1.8.1
   "@types/react": ^19.2.18
   "@types/react-dom": ^19.2.7
   ai: ^7.0.109

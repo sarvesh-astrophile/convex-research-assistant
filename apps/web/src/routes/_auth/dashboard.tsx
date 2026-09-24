@@ -24,7 +24,16 @@ import {
 import { Message, MessageContent } from "@convex-research-assistant/ui/components/message";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowUp, FlaskConical, LoaderCircle, MessageSquare, Plus, Sparkles } from "lucide-react";
+import {
+  ArrowUp,
+  FileText,
+  FlaskConical,
+  LoaderCircle,
+  MessageSquare,
+  Plus,
+  Sparkles,
+  Upload,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -109,7 +118,7 @@ function DashboardContent() {
 
         <div className="hidden items-center justify-between border-t p-3 md:flex">
           <span className="text-[0.65rem] tracking-wide text-muted-foreground uppercase">
-            Stage 1
+            Stages 1–3
           </span>
           <UserMenu />
         </div>
@@ -174,9 +183,54 @@ function ChatSession({
       prompt: args.prompt,
     });
   });
+  const sources = useQuery(api.search.listSources, { sessionId });
+  const documents = useQuery(api.documents.list, { sessionId });
+  const uploadUrl = useMutation(api.documents.uploadUrl);
+  const attachDocument = useMutation(api.documents.attach);
+  const [isUploading, setIsUploading] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [isSending, setIsSending] = useState(false);
   const isStreaming = messages.some((message) => message.status === "streaming");
+  let latestPromptId: string | undefined;
+
+  async function handleUpload(file: File) {
+    if (
+      file.type !== "application/pdf" ||
+      !file.name.toLowerCase().endsWith(".pdf") ||
+      file.size > 25 * 1024 * 1024
+    ) {
+      toast.error("Select a PDF smaller than 25 MiB.");
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const url = await uploadUrl({ sessionId });
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/pdf" },
+        body: file,
+      });
+      if (!response.ok) throw new Error("Upload failed.");
+      const payload: unknown = await response.json();
+      if (
+        !payload ||
+        typeof payload !== "object" ||
+        !("storageId" in payload) ||
+        typeof payload.storageId !== "string"
+      )
+        throw new Error("Upload returned an invalid file ID.");
+      await attachDocument({
+        sessionId,
+        storageId: payload.storageId as Id<"_storage">,
+        filename: file.name,
+      });
+      toast.success("PDF uploaded. Extraction and indexing started.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not upload PDF.");
+    } finally {
+      setIsUploading(false);
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -213,6 +267,50 @@ function ChatSession({
 
       <div className="min-h-0 overflow-y-auto px-4 py-6 md:px-8">
         <div className="mx-auto flex min-h-full max-w-3xl flex-col justify-end gap-5">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <label className="inline-flex cursor-pointer items-center gap-2 border bg-card px-3 py-2 hover:bg-muted">
+              {isUploading ? (
+                <LoaderCircle className="size-4 animate-spin" />
+              ) : (
+                <Upload className="size-4" />
+              )}
+              {isUploading ? "Uploading…" : "Upload PDF"}
+              <input
+                type="file"
+                accept="application/pdf,.pdf"
+                className="sr-only"
+                disabled={isUploading}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void handleUpload(file);
+                  event.target.value = "";
+                }}
+              />
+            </label>
+            {documents?.map((doc) => (
+              <span
+                key={doc._id}
+                className="inline-flex max-w-64 items-center gap-1.5 border px-2 py-1.5"
+                title={doc.error ?? doc.filename}
+              >
+                <FileText className="size-3 shrink-0" />
+                <span className="truncate">{doc.filename}</span>
+                <span
+                  className={doc.status === "failed" ? "text-destructive" : "text-muted-foreground"}
+                >
+                  {doc.status}
+                  {doc.pageCount ? ` · ${doc.pageCount} pages` : ""}
+                </span>
+              </span>
+            ))}
+          </div>
+          {documents
+            ?.filter((doc) => doc.status === "failed")
+            .map((doc) => (
+              <p key={doc._id} role="alert" className="text-xs text-destructive">
+                {doc.filename}: {doc.error || "PDF processing failed."}
+              </p>
+            ))}
           {sessionStatus === "failed" && (
             <div className="border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               The last response failed. Verify the model configuration, then try your message again.
@@ -228,12 +326,18 @@ function ChatSession({
               <Sparkles className="mb-4 size-5 text-muted-foreground" />
               <p className="text-sm font-medium">What are you investigating?</p>
               <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
-                Ask a question or develop an idea. Web search and document research arrive in later
-                stages.
+                Ask a question or investigate current information with cited web search.
               </p>
             </div>
           ) : (
-            messages.map((message) => <ChatMessage key={message.key} message={message} />)
+            messages.map((message) => {
+              if (message.role === "user") latestPromptId = message.id;
+              const messageSources =
+                message.role === "assistant"
+                  ? (sources?.filter((source) => source.promptMessageId === latestPromptId) ?? [])
+                  : [];
+              return <ChatMessage key={message.key} message={message} sources={messageSources} />;
+            })
           )}
         </div>
       </div>
@@ -277,7 +381,7 @@ function ChatSession({
   );
 }
 
-function ChatMessage({ message }: { message: UIMessage }) {
+function ChatMessage({ message, sources }: { message: UIMessage; sources: Doc<"sources">[] }) {
   const isUser = message.role === "user";
   const [visibleText] = useSmoothText(message.text, {
     startStreaming: message.status === "streaming",
@@ -291,6 +395,38 @@ function ChatMessage({ message }: { message: UIMessage }) {
             {visibleText || (message.status === "streaming" ? "Thinking..." : "")}
           </BubbleContent>
         </Bubble>
+        {sources.length > 0 && message.status !== "streaming" && (
+          <div className="mt-2 grid gap-2 sm:grid-cols-2" aria-label="Sources">
+            {sources.map((source) =>
+              source.url ? (
+                <a
+                  key={source._id}
+                  href={source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="border bg-card p-3 text-xs hover:bg-muted"
+                >
+                  <strong className="block truncate">
+                    [{source.index}] {source.title}
+                  </strong>
+                  <span className="mt-1 block line-clamp-2 text-muted-foreground">
+                    {source.snippet}
+                  </span>
+                </a>
+              ) : (
+                <div key={source._id} className="border bg-card p-3 text-xs">
+                  <strong className="block truncate">
+                    [{source.index}] {source.title} · p. {source.pageStart}
+                    {source.pageEnd !== source.pageStart ? `–${source.pageEnd}` : ""}
+                  </strong>
+                  <span className="mt-1 block line-clamp-2 text-muted-foreground">
+                    {source.snippet}
+                  </span>
+                </div>
+              ),
+            )}
+          </div>
+        )}
         {message.status === "failed" && (
           <p className="text-xs text-destructive">
             This response failed. Try sending your message again.

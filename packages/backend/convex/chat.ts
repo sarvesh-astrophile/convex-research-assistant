@@ -1,6 +1,7 @@
 import { listUIMessages, saveMessage, syncStreams, vStreamArgs } from "@convex-dev/agent";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
+import { stepCountIs } from "ai";
 
 import { components, internal } from "./_generated/api";
 import { internalAction, internalMutation, mutation, query } from "./_generated/server";
@@ -83,6 +84,7 @@ export const sendMessage = mutation({
       sessionId,
       threadId,
       promptMessageId: messageId,
+      prompt: trimmedPrompt,
     });
 
     return null;
@@ -94,13 +96,38 @@ export const streamResponse = internalAction({
     sessionId: v.id("researchSessions"),
     threadId: v.string(),
     promptMessageId: v.string(),
+    prompt: v.string(),
   },
   handler: async (ctx, args) => {
     try {
-      const result = await getAssistantAgent().streamText(
+      const readyDocuments = await ctx.runQuery(internal.documents.readyForResponse, {
+        sessionId: args.sessionId,
+        threadId: args.threadId,
+      });
+      const refersToDocuments =
+        readyDocuments.length > 0 &&
+        (/\b(pdf|document|file|upload|guide|manual|handbook|attachment|summari[sz]e)\b/i.test(
+          args.prompt,
+        ) ||
+          readyDocuments.some((name) => {
+            const stem = name.replace(/\.pdf$/i, "").trim();
+            return stem.length >= 3 && args.prompt.toLowerCase().includes(stem.toLowerCase());
+          }));
+      const result = await getAssistantAgent(
+        args.sessionId,
+        args.promptMessageId,
+        readyDocuments,
+      ).streamText(
         ctx,
         { threadId: args.threadId },
-        { promptMessageId: args.promptMessageId },
+        {
+          promptMessageId: args.promptMessageId,
+          stopWhen: stepCountIs(4),
+          prepareStep: ({ stepNumber }) =>
+            stepNumber === 0 && refersToDocuments
+              ? { toolChoice: { type: "tool", toolName: "searchDocuments" } }
+              : undefined,
+        },
         { saveStreamDeltas: { chunking: "word", throttleMs: 100 } },
       );
       await result.consumeStream();

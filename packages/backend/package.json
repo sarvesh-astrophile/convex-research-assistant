@@ -12,9 +12,11 @@
     "@convex-dev/agent": "catalog:",
     "@convex-dev/ai-sdk-provider": "catalog:",
     "@convex-dev/better-auth": "catalog:",
+    "@exalabs/convex-exa": "catalog:",
     "ai": "catalog:",
     "better-auth": "catalog:",
     "convex": "catalog:",
+    "unpdf": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -1,0 +1,1080 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="A beginner-friendly, first-principles guide to web search, citations, PDF ingestion, and hybrid retrieval in the Convex Research Assistant."
+    />
+    <title>How the assistant learned to research · Stages 2 &amp; 3</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f6f3ec;
+        --ink: #192a32;
+        --muted: #51636b;
+        --line: #d4dedc;
+        --white: #fffdfa;
+        --teal: #146b67;
+        --teal-light: #e1f2ee;
+        --orange: #ab4e20;
+        --orange-light: #fff0dd;
+        --navy: #18313c;
+        --shadow: 0 16px 48px #192a3210;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font:
+          17px/1.75 system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+      a {
+        color: var(--teal);
+        text-underline-offset: 0.18em;
+      }
+      a:focus-visible,
+      summary:focus-visible {
+        outline: 3px solid var(--orange);
+        outline-offset: 4px;
+      }
+      h1,
+      h2,
+      h3,
+      h4 {
+        line-height: 1.18;
+        letter-spacing: -0.035em;
+      }
+      h1 {
+        font-size: clamp(2.65rem, 7vw, 5.3rem);
+        margin: 0.7rem 0 1.2rem;
+        max-width: 13ch;
+      }
+      h2 {
+        font-size: clamp(2rem, 4vw, 3.05rem);
+        margin: 0 0 1.1rem;
+      }
+      h3 {
+        font-size: clamp(1.35rem, 2.6vw, 1.8rem);
+        margin: 0 0 0.65rem;
+      }
+      h4 {
+        font-size: 1.12rem;
+        margin: 0 0 0.5rem;
+      }
+      p {
+        margin: 0 0 1.15rem;
+      }
+      strong {
+        color: var(--navy);
+      }
+      code {
+        padding: 0.12em 0.35em;
+        border-radius: 0.3rem;
+        background: #e9efed;
+        color: #184d4b;
+        font:
+          0.86em/1.5 ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        overflow-wrap: anywhere;
+      }
+      pre {
+        overflow: auto;
+        padding: 1.1rem 1.3rem;
+        border-radius: 0.65rem;
+        background: #182d34;
+        color: #e6f5f0;
+        font:
+          0.86rem/1.65 ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+      }
+      pre code {
+        padding: 0;
+        background: transparent;
+        color: inherit;
+      }
+      .skip {
+        position: absolute;
+        top: -6rem;
+        left: 1rem;
+        padding: 0.6rem;
+        background: white;
+        z-index: 10;
+      }
+      .skip:focus {
+        top: 1rem;
+      }
+      .wrap {
+        width: min(100% - 2rem, 1170px);
+        margin-inline: auto;
+      }
+      .hero {
+        padding: clamp(3rem, 8vw, 7rem) 0 4rem;
+        background:
+          radial-gradient(circle at 85% 12%, #cfe9e1, transparent 36%),
+          linear-gradient(135deg, #fbfaf6, #eaf1eb);
+        border-bottom: 1px solid var(--line);
+      }
+      .eyebrow {
+        color: var(--teal);
+        font-size: 0.78rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+      }
+      .hero-lead {
+        max-width: 68ch;
+        color: var(--muted);
+        font-size: clamp(1.12rem, 2.4vw, 1.45rem);
+      }
+      .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+        margin-top: 1.6rem;
+      }
+      .badge {
+        display: inline-block;
+        border: 1px solid #aac6bf;
+        background: #ffffffaa;
+        border-radius: 10rem;
+        padding: 0.3rem 0.8rem;
+        font-size: 0.81rem;
+        font-weight: 700;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 225px minmax(0, 1fr);
+        gap: clamp(1.8rem, 5vw, 5rem);
+        padding-block: 3rem 6rem;
+        align-items: start;
+      }
+      .toc {
+        position: sticky;
+        top: 1.5rem;
+        padding: 1.2rem;
+        border: 1px solid var(--line);
+        background: var(--white);
+        border-radius: 0.85rem;
+        font-size: 0.85rem;
+      }
+      .toc strong {
+        display: block;
+        margin-bottom: 0.7rem;
+      }
+      .toc a {
+        display: block;
+        margin: 0.45rem 0;
+        color: var(--muted);
+        text-decoration: none;
+      }
+      .toc a:hover {
+        color: var(--teal);
+        text-decoration: underline;
+      }
+      main {
+        min-width: 0;
+      }
+      section {
+        scroll-margin-top: 2rem;
+        padding: 0 0 3rem;
+        margin-bottom: 3rem;
+        border-bottom: 1px solid var(--line);
+      }
+      section:last-child {
+        border-bottom: 0;
+      }
+      .section-label {
+        margin-bottom: 0.55rem;
+        color: var(--orange);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+      }
+      .lead {
+        font-size: 1.16rem;
+        color: var(--muted);
+      }
+      .question {
+        margin: 2rem 0 1.2rem;
+        padding-left: 1rem;
+        border-left: 4px solid var(--teal);
+        font-size: 1.18rem;
+        font-weight: 750;
+        line-height: 1.4;
+      }
+      .root {
+        margin: 1.65rem 0;
+        border-radius: 0.75rem;
+        padding: 1.2rem 1.4rem;
+        background: var(--orange-light);
+        border: 1px solid #e8bb8d;
+      }
+      .root p:last-child,
+      .callout p:last-child,
+      .card p:last-child {
+        margin-bottom: 0;
+      }
+      .root strong {
+        color: #713916;
+      }
+      .callout {
+        padding: 1.15rem 1.35rem;
+        border-radius: 0.75rem;
+        background: var(--teal-light);
+        border: 1px solid #a6d0c5;
+        margin: 1.5rem 0;
+      }
+      .callout.warn {
+        background: var(--orange-light);
+        border-color: #e8bb8d;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+        margin: 1.4rem 0;
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 0.8rem;
+        background: var(--white);
+        padding: 1.25rem;
+        box-shadow: var(--shadow);
+      }
+      .card .number {
+        display: inline-block;
+        color: var(--teal);
+        font-size: 0.78rem;
+        letter-spacing: 0.1em;
+        font-weight: 800;
+        margin-bottom: 0.6rem;
+      }
+      .path {
+        display: block;
+        margin: 0.5rem 0;
+        color: var(--muted);
+        font:
+          0.8rem/1.5 ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        overflow-wrap: anywhere;
+      }
+      .steps {
+        counter-reset: step;
+        list-style: none;
+        margin: 1.5rem 0;
+        padding: 0;
+      }
+      .steps li {
+        counter-increment: step;
+        position: relative;
+        margin: 0 0 0.9rem;
+        padding: 1rem 1.15rem 1rem 3.9rem;
+        border: 1px solid var(--line);
+        background: var(--white);
+        border-radius: 0.7rem;
+      }
+      .steps li::before {
+        content: counter(step);
+        position: absolute;
+        left: 1rem;
+        top: 0.9rem;
+        width: 1.9rem;
+        height: 1.9rem;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--teal);
+        color: white;
+        font-size: 0.82rem;
+        font-weight: 800;
+      }
+      .steps p {
+        margin: 0.3rem 0 0;
+        color: var(--muted);
+      }
+      .flow {
+        margin: 1.5rem 0;
+        padding: 1.25rem;
+        background: #203942;
+        color: #e8f4ee;
+        border-radius: 0.85rem;
+        font:
+          0.83rem/1.8 ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        overflow-x: auto;
+        white-space: pre;
+      }
+      .table-wrap {
+        overflow-x: auto;
+        margin: 1.5rem 0;
+        border: 1px solid var(--line);
+        border-radius: 0.75rem;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 620px;
+        font-size: 0.87rem;
+        line-height: 1.5;
+        background: var(--white);
+      }
+      th,
+      td {
+        padding: 0.8rem 0.95rem;
+        text-align: left;
+        vertical-align: top;
+        border-bottom: 1px solid var(--line);
+      }
+      th {
+        color: #fff;
+        background: var(--navy);
+      }
+      tr:last-child td {
+        border-bottom: 0;
+      }
+      ul {
+        padding-left: 1.3rem;
+      }
+      li {
+        margin-bottom: 0.55rem;
+      }
+      details {
+        border: 1px solid var(--line);
+        background: var(--white);
+        border-radius: 0.75rem;
+        padding: 0.85rem 1.1rem;
+        margin: 0.8rem 0;
+      }
+      summary {
+        cursor: pointer;
+        font-weight: 750;
+      }
+      details p {
+        margin-top: 0.85rem;
+      }
+      footer {
+        padding: 2rem 0 3rem;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.84rem;
+      }
+      @media (max-width: 810px) {
+        .layout {
+          grid-template-columns: 1fr;
+          padding-top: 1.3rem;
+        }
+        .toc {
+          position: static;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.3rem 1rem;
+        }
+        .toc strong {
+          width: 100%;
+        }
+        .toc a {
+          margin: 0;
+        }
+      }
+      @media (max-width: 570px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        body {
+          font-size: 16px;
+        }
+        .steps li {
+          padding-left: 3.3rem;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to explanation</a>
+    <header class="hero" id="top">
+      <div class="wrap">
+        <div class="eyebrow">Convex Research Assistant · a first-principles field guide</div>
+        <h1>How did chat learn to research?</h1>
+        <p class="hero-lead">
+          Stages 2 and 3 add two kinds of evidence: live websites and your own PDFs. We will start
+          with what goes wrong without them, ask the next natural question, and follow the answer
+          all the way into the code.
+        </p>
+        <div class="hero-badges">
+          <span class="badge">Stage 2 · Web evidence</span
+          ><span class="badge">Stage 3 · PDF evidence</span
+          ><span class="badge">No build tools needed to read this page</span>
+        </div>
+      </div>
+    </header>
+    <div class="wrap layout">
+      <nav class="toc" aria-label="On this page">
+        <strong>Follow the questions</strong>
+        <a href="#starting-point">What could chat do?</a>
+        <a href="#web-problem">Why search the web?</a>
+        <a href="#web-journey">How does search work?</a>
+        <a href="#web-data">Why store citations?</a>
+        <a href="#pdf-problem">Why is a PDF different?</a>
+        <a href="#ingestion">How do we prepare a PDF?</a>
+        <a href="#retrieval">How does the right passage win?</a>
+        <a href="#connected">How does it all connect?</a>
+        <a href="#file-map">Which files changed?</a>
+        <a href="#reality">What is verified?</a>
+      </nav>
+      <main id="main">
+        <section id="starting-point">
+          <div class="section-label">00 / Start with the problem</div>
+          <h2>What did Stage 1 already give us?</h2>
+          <p>
+            Imagine a helpful friend who remembers every conversation. Stage 1 gave our assistant
+            that memory: a user signs in, creates a session, sends a question, sees a reply arrive
+            in pieces, and can return to the same thread later.
+          </p>
+          <div class="flow">
+            You ask → save your message → assistant replies → save the reply → reopen later
+          </div>
+          <p>
+            <strong>But memory is not evidence.</strong> A remembered conversation cannot tell us
+            what happened on the web this morning or what a brand-new PDF says. The assistant might
+            sound confident even when it has never seen the relevant information.
+          </p>
+          <div class="root">
+            <strong>Root cause:</strong> the model can answer from its existing context, but it
+            cannot magically read the live web or a local file that we have not explicitly supplied
+            to it.
+          </div>
+          <p class="question">So how can we put fresh, checkable information in front of it?</p>
+          <p>
+            Give it <strong>tools</strong>: one that fetches web evidence (Stage 2), and one that
+            looks up passages from uploaded PDFs (Stage 3). Both tools feed evidence into the same
+            persistent Agent conversation. A citation then tells the reader where an answer came
+            from.
+          </p>
+        </section>
+
+        <section id="web-problem">
+          <div class="section-label">01 / Stage 2 · Why</div>
+          <h2>Why is “just ask the model” not enough for web questions?</h2>
+          <p>
+            Suppose you ask, “What changed in this week's release?” The model might have been
+            trained before the release. Asking harder does not give it internet access. Even if it
+            guesses correctly, you cannot inspect its evidence.
+          </p>
+          <p class="question">
+            Why not ask the browser to search and paste everything into the prompt?
+          </p>
+          <p>
+            That makes the browser decide which sites count, exposes integration details to the
+            frontend, and loses a dependable server-side record of searches and their costs. We want
+            the server to control the search, keep the API key private, and associate results with
+            <em>this</em> question.
+          </p>
+          <div class="root">
+            <strong>Root cause:</strong> generation and retrieval are different jobs. Generating
+            fluent text does not fetch facts; fetching facts alone does not explain them. We need a
+            controlled handoff between the two.
+          </div>
+          <p class="question">What is the smallest useful handoff?</p>
+          <div class="grid">
+            <div class="card">
+              <span class="number">1 / ASK</span>
+              <h3>Assistant chooses a tool</h3>
+              <p>
+                Its instructions say to use <code>webSearch</code> when a question needs current,
+                externally checkable facts. The model passes a short search query; Zod checks that
+                it is 2–500 characters.
+              </p>
+            </div>
+            <div class="card">
+              <span class="number">2 / FIND</span>
+              <h3>Exa finds evidence</h3>
+              <p>
+                A Convex backend action calls Exa's <code>fast</code> search for up to five results,
+                including highlights. The API key stays in Convex deployment settings, never in the
+                web app.
+              </p>
+            </div>
+            <div class="card">
+              <span class="number">3 / LABEL</span>
+              <h3>The server numbers sources</h3>
+              <p>
+                It stores each valid web URL, title, and snippet in a <code>sources</code> row. The
+                tool returns entries such as <code>[1]</code> to the assistant, so its reply can
+                refer to the same numbers the UI shows.
+              </p>
+            </div>
+            <div class="card">
+              <span class="number">4 / EXPLAIN</span>
+              <h3>The answer stays in the thread</h3>
+              <p>
+                The Agent continues generating a reply; its message and tool activity belong to the
+                Agent thread. The separate source rows make evidence easy to show as cards after the
+                response.
+              </p>
+            </div>
+          </div>
+          <p>
+            <strong>Analogy:</strong> the model is a journalist, Exa is a librarian, and
+            <code>sources</code> is the journalist's labeled stack of clippings. A polished article
+            without clippings is hard to verify.
+          </p>
+        </section>
+
+        <section id="web-journey">
+          <div class="section-label">02 / Stage 2 · Follow one question</div>
+          <h2>What happens after I press Send?</h2>
+          <ol class="steps">
+            <li>
+              <strong>Save the prompt first.</strong>
+              <p>
+                <code>chat.sendMessage</code> checks the signed-in user owns the session, saves the
+                user message, marks the session <code>running</code>, and schedules
+                <code>chat.streamResponse</code>. Why first? If the browser closes, the question
+                still exists.
+              </p>
+            </li>
+            <li>
+              <strong>Give the tool a question-specific identity.</strong>
+              <p>
+                <code>getAssistantAgent(sessionId, promptMessageId)</code> attaches both IDs to its
+                tools. Why two IDs? One identifies the conversation; the other identifies this exact
+                turn, so another answer cannot borrow its sources or search allowance.
+              </p>
+            </li>
+            <li>
+              <strong>Reserve one search call before paying for it.</strong>
+              <p>
+                <code>search.reserveSearch</code> writes a <code>toolUsage</code> row in a Convex
+                mutation. It rejects a call after <code>RESEARCH_MAX_TASKS</code> calls for this
+                prompt (default 3). Doing the check and write together stops simultaneous tool calls
+                from both passing a separate “check first” step.
+              </p>
+            </li>
+            <li>
+              <strong>Ask Exa for results.</strong>
+              <p>
+                <code>searchProvider.search</code> is a small interface between our app and Exa. It
+                turns Exa results into a simple shape: <code>title</code>, <code>url</code>, and
+                <code>snippet</code>. Why an interface? If the provider changes, the rest of the
+                assistant does not have to learn a new result format.
+              </p>
+            </li>
+            <li>
+              <strong>Keep the useful evidence.</strong>
+              <p>
+                <code>search.saveSearch</code> accepts only HTTP(S) URLs, removes URL fragments,
+                deduplicates repeated URLs within the prompt, assigns stable
+                <code>[n]</code> numbers, and updates the usage row with Exa's reported dollar total
+                or a $0.005 fallback estimate.
+              </p>
+            </li>
+            <li>
+              <strong>Write and display.</strong>
+              <p>
+                The tool hands numbered results to the model.
+                <code>chat.streamResponse</code> streams its reply and stops after at most four
+                model steps. The dashboard loads owned sources reactively and shows clickable web
+                cards below the finished assistant message.
+              </p>
+            </li>
+          </ol>
+          <div class="flow">
+            Prompt A ──→ toolUsage (call 1, call 2, … max 3) └──→ sources [1], [2], … ──→ answer:
+            “... [1]” Prompt B ──→ its own usage and its own [1], [2], …
+          </div>
+          <p class="question">What if Exa fails after the reservation?</p>
+          <p>
+            The reserved usage row remains with its initial cost of zero; the session response may
+            fail and be marked <code>failed</code>. That row still counts toward the per-question
+            search-call cap. This is a <em>call-count reservation</em>, not the hard monthly
+            spending reservation planned for Stage 6.
+          </p>
+        </section>
+
+        <section id="web-data">
+          <div class="section-label">03 / Stage 2 · Keep the receipts</div>
+          <h2>Why store sources in a table instead of only in the answer?</h2>
+          <p>
+            A sentence such as “Revenue grew [2]” contains a label, but no URL. If the assistant
+            alone invents that label, the UI cannot know where it should link. Storing a source row
+            gives the label an inspectable record.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Table</th>
+                  <th>Important fields</th>
+                  <th>Why these fields exist</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>sources</code></td>
+                  <td>
+                    <code>sessionId</code>, <code>promptMessageId</code>, <code>index</code>,
+                    <code>kind</code>, <code>title</code>, <code>url</code>, <code>snippet</code>,
+                    <code>dedupeKey</code>
+                  </td>
+                  <td>
+                    Connect [n] to one question and one source. <code>kind</code> distinguishes a
+                    website from a PDF passage.
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>toolUsage</code></td>
+                  <td>
+                    <code>userId</code>, <code>sessionId</code>, <code>promptMessageId</code>,
+                    <code>tool</code>, <code>units</code>, <code>estimatedCostUsd</code>
+                  </td>
+                  <td>
+                    Count Exa calls per prompt, attribute them to a user, and record the reported or
+                    estimated tool cost.
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>researchSessions</code></td>
+                  <td><code>userId</code>, <code>threadId</code>, <code>status</code></td>
+                  <td>
+                    Still owns the conversation and links it to the Agent's thread. Search extends
+                    Stage 1 rather than replacing it.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            The source-list query first checks session ownership, then uses the
+            <code>sessionId + promptMessageId</code> index. The frontend groups cards with the
+            latest user message ID. The number <code>[1]</code> restarts for each new question,
+            because evidence for question A should not silently become evidence for question B.
+          </p>
+          <div class="callout">
+            <strong>Important distinction:</strong> the server stores real source rows and tells the
+            model to cite only them. The present implementation does not programmatically check
+            every <code>[n]</code> in generated prose. A displayed marker is an
+            instruction-following result, not proof that every sentence is supported.
+          </div>
+        </section>
+
+        <section id="pdf-problem">
+          <div class="section-label">04 / Stage 3 · Why</div>
+          <h2>Why can't web search answer questions about my PDF?</h2>
+          <p>
+            A private meeting note or a newly uploaded textbook might not exist on the public web.
+            Exa cannot search a document it has never received. We need a way to store the file and
+            retrieve <em>small relevant passages</em> when the assistant needs them.
+          </p>
+          <p class="question">Could we simply paste the whole PDF into every question?</p>
+          <p>
+            That repeats a huge amount of text, wastes model input, may exceed context limits, and
+            makes it difficult to point to the page containing the answer. Think of looking up a
+            recipe: you want the right page, not the whole library on the table every time.
+          </p>
+          <div class="root">
+            <strong>Root cause:</strong> documents are larger than a useful answer's context, while
+            questions usually need only a handful of passages. We must prepare the document once and
+            look up the relevant pieces later.
+          </div>
+          <p class="question">What preparation makes lookup possible?</p>
+          <p>
+            Upload the original PDF, extract its words page by page, cut the words into overlapping
+            chunks, and make each chunk searchable in two ways: by its words and by its meaning.
+            This is <strong>retrieval-augmented generation (RAG)</strong>: retrieve evidence first,
+            then let the model generate an answer from it.
+          </p>
+        </section>
+
+        <section id="ingestion">
+          <div class="section-label">05 / Stage 3 · Prepare a document</div>
+          <h2>What turns one PDF into searchable evidence?</h2>
+          <ol class="steps">
+            <li>
+              <strong>Ask for permission to upload.</strong>
+              <p>
+                The dashboard calls <code>documents.uploadUrl</code>. The mutation checks the
+                current user owns the session and has room for another document (default 10). It
+                returns a short-lived Convex storage upload URL.
+              </p>
+            </li>
+            <li>
+              <strong>Store the original file.</strong>
+              <p>
+                The browser posts the PDF bytes directly to Convex file storage. Why a separate
+                storage ID? A database row should describe a file; it should not contain 25 MiB of
+                binary data.
+              </p>
+            </li>
+            <li>
+              <strong>Attach it to the conversation.</strong>
+              <p>
+                <code>documents.attach</code> checks ownership again, refuses an already attached
+                storage ID, checks the stored size/content type and filename, writes a
+                <code>documents</code> row, then schedules ingestion. The browser checks a 25 MiB
+                limit too, but the server performs the authoritative metadata check.
+              </p>
+            </li>
+            <li>
+              <strong>Read its pages.</strong>
+              <p>
+                The Node.js action <code>ingest.process</code> loads stored bytes, checks the
+                <code>%PDF-</code> header, limits pages (default 100), and calls
+                <code>unpdf</code> for page text. An image-only scanned PDF has no text layer, so it
+                fails clearly; this stage has no OCR.
+              </p>
+            </li>
+            <li>
+              <strong>Make passages, with overlap.</strong>
+              <p>
+                The text is split into windows of 450 words, advancing 380 words each time (70-word
+                overlap). Why overlap? A useful sentence can straddle the boundary between two
+                chunks. Each chunk remembers its starting and ending pages.
+              </p>
+            </li>
+            <li>
+              <strong>Give each passage a meaning fingerprint.</strong>
+              <p>
+                <code>embedMany</code> sends batches of up to eight passages through the Convex AI
+                Gateway. Each receives a 1,536-number <em>embedding</em>: a numeric representation
+                intended to put similar meanings near each other. Chunks and embedding usage are
+                saved in batches.
+              </p>
+            </li>
+            <li>
+              <strong>Declare it searchable.</strong>
+              <p>
+                The document moves through <code>extracting → embedding → ready</code>. If
+                extraction or embedding fails, it becomes <code>failed</code> with an error shown
+                beside the file. Retrieval only accepts chunks from <code>ready</code> documents.
+              </p>
+            </li>
+          </ol>
+          <div class="flow">
+            PDF file → Convex storage → pages → overlapping chunks ↓ text index + 1,536-number
+            vector index ↓ ready to answer questions
+          </div>
+          <p class="question">
+            Why keep the original PDF, the document row, and chunks separately?
+          </p>
+          <p>
+            They answer different questions. Storage holds bytes (“What file was uploaded?”). The
+            <code>documents</code> row holds ownership and progress (“Is it ready?”).
+            <code>documentChunks</code> holds searchable evidence (“Which words on which pages
+            answer this?”). Separate pieces let the UI update progress without rewriting a giant
+            PDF-sized record.
+          </p>
+          <div class="callout warn">
+            <strong>Small but important detail:</strong> “450 words” is a word-window choice, not an
+            exact tokenizer. The saved <code>tokenCount</code> is estimated at about 1.4 tokens per
+            word. The spec's 500–800-token target is approximate here.
+          </div>
+        </section>
+
+        <section id="retrieval">
+          <div class="section-label">06 / Stage 3 · Find the right passage</div>
+          <h2>How do we find the right paragraph in a long PDF?</h2>
+          <p>
+            Let's ask: “Where does the handbook describe remote work?” A keyword search is good if
+            the PDF literally says “remote work.” But what if it says “working away from the
+            office”? A meaning-based search may find that passage even without matching words.
+          </p>
+          <p class="question">Why not use only meaning-based search?</p>
+          <p>
+            Exact terms matter too: invoice numbers, legal clauses, or a product name may be easiest
+            to find by their literal spelling. Each search method has a blind spot, so we run both.
+          </p>
+          <div class="grid">
+            <div class="card">
+              <span class="number">LIST A / WORDS</span>
+              <h3>Full-text search</h3>
+              <p>
+                A Convex search index ranks chunks containing terms from the question, filtered to
+                the current session. Best for exact names and phrases.
+              </p>
+            </div>
+            <div class="card">
+              <span class="number">LIST B / MEANING</span>
+              <h3>Vector search</h3>
+              <p>
+                We embed the question using the same gateway model and look for nearby chunk
+                vectors, again filtered to the current session. Best for related wording.
+              </p>
+            </div>
+          </div>
+          <p class="question">Now we have two ranked lists. How do we combine them fairly?</p>
+          <p>
+            The raw scores from keyword and vector search mean different things, so adding scores
+            directly would be like adding degrees Celsius to dollars. Instead, use
+            <strong>reciprocal-rank fusion (RRF)</strong>: reward a result for its <em>place</em> in
+            each list.
+          </p>
+          <pre><code>score(chunk) = 1 / (60 + keywordRank + 1)
+             + 1 / (60 + vectorRank + 1)
+
+If a chunk appears in only one list, it receives only that list's term.
+Rank 0 is first place; a smaller rank gives a larger contribution.</code></pre>
+          <p>
+            For example, passage A ranks first in <em>both</em> lists, so it gets
+            <code>1/61 + 1/61 ≈ 0.0328</code>. Passage B ranks first in only the keyword list, so it
+            gets <code>1/61 ≈ 0.0164</code>. A wins because two independent ways of looking found it
+            useful. The constant <code>60</code> keeps rank differences gentle rather than letting
+            one lucky first place overwhelm everything else.
+          </p>
+          <p>
+            A passage near the top of both lists gets two helpful votes. The implementation keeps
+            the best five, checks that their files are <code>ready</code>, stores them as
+            <code>document</code> sources, and gives the assistant a short excerpt plus page
+            numbers. Then it can write “See [2]” while the UI shows “handbook.pdf · p. 4–5.”
+          </p>
+          <div class="callout">
+            <strong>Why record the question embedding too?</strong> Creating that fingerprint uses a
+            model call. <code>usageLedger</code> records tokens and a provisional cost for both
+            document-chunk embeddings and question embeddings. The default is
+            <code>openai/text-embedding-3-small</code> at 1,536 dimensions; a nonmatching dimension
+            is rejected rather than inserted into an incompatible index.
+          </div>
+        </section>
+
+        <section id="connected">
+          <div class="section-label">07 / Put the pieces together</div>
+          <h2>Do we now have two separate assistants?</h2>
+          <p>
+            No. The same Stage 1 Agent thread holds the conversation. Its tool list now includes
+            <code>webSearch</code> and <code>searchDocuments</code>. The model chooses whether to
+            use a tool; the server determines what that tool is allowed to fetch and save. Both
+            kinds of evidence go into the same <code>sources</code> table, with
+            <code>kind</code> telling the UI which card to draw.
+          </p>
+          <div class="flow">
+            User + saved Agent thread │ └── assistant chooses a tool, if needed ├── webSearch → Exa
+            → web source [1] → clickable URL └── searchDocuments → hybrid PDF lookup → PDF source
+            [2] → page range │ └── assistant reply streams into the original Agent thread
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Question</th>
+                  <th>Stage 2 answer</th>
+                  <th>Stage 3 answer</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Where is the evidence?</td>
+                  <td>On public websites found by Exa.</td>
+                  <td>In uploaded PDF passages.</td>
+                </tr>
+                <tr>
+                  <td>How is it fetched?</td>
+                  <td>A backend tool calls the Exa component.</td>
+                  <td>A backend tool runs full-text and vector searches.</td>
+                </tr>
+                <tr>
+                  <td>What does [n] point to?</td>
+                  <td>A title, URL, and snippet.</td>
+                  <td>A filename, page range, and snippet.</td>
+                </tr>
+                <tr>
+                  <td>How is usage recorded?</td>
+                  <td><code>toolUsage</code> records Exa search calls.</td>
+                  <td><code>usageLedger</code> records embedding calls.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            Ownership starts with the signed-in user's <code>researchSessions</code> row. Public
+            source and document list queries check that row before returning data. The PDF index is
+            filtered by session and hydrated chunks are checked against the same session before
+            becoming citations.
+          </p>
+        </section>
+
+        <section id="file-map">
+          <div class="section-label">08 / What actually changed?</div>
+          <h2>Where should I look in the code?</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>File</th>
+                  <th>What it adds</th>
+                  <th>Why it exists</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <code>pnpm-workspace.yaml</code>, <code>packages/backend/package.json</code>,
+                    <code>pnpm-lock.yaml</code>
+                  </td>
+                  <td>Exa component and <code>unpdf</code> dependencies.</td>
+                  <td>Provide web search and PDF text extraction reproducibly.</td>
+                </tr>
+                <tr>
+                  <td><code>packages/backend/convex/convex.config.ts</code></td>
+                  <td>Exa component and typed deployment variables.</td>
+                  <td>Keep provider credentials on the Convex backend.</td>
+                </tr>
+                <tr>
+                  <td><code>packages/backend/convex/schema.ts</code></td>
+                  <td>
+                    <code>sources</code>, <code>toolUsage</code>, <code>documents</code>,
+                    <code>documentChunks</code>, <code>usageLedger</code>, and their indexes.
+                  </td>
+                  <td>Give citations, files, retrieval, and usage durable homes.</td>
+                </tr>
+                <tr>
+                  <td><code>packages/backend/convex/searchProvider.ts</code></td>
+                  <td>Small <code>SearchProvider</code> interface and Exa adapter.</td>
+                  <td>Turn provider responses into predictable app data.</td>
+                </tr>
+                <tr>
+                  <td><code>packages/backend/convex/search.ts</code></td>
+                  <td>Source query, search-call reservation, URL deduplication, usage update.</td>
+                  <td>Count calls and associate evidence with one prompt.</td>
+                </tr>
+                <tr>
+                  <td><code>packages/backend/convex/assistant.ts</code></td>
+                  <td><code>webSearch</code> and <code>searchDocuments</code> Agent tools.</td>
+                  <td>Let the assistant ask for evidence while staying on the backend.</td>
+                </tr>
+                <tr>
+                  <td><code>packages/backend/convex/chat.ts</code></td>
+                  <td>Pass session/prompt IDs into the Agent; limit model steps to four.</td>
+                  <td>Connect tools and citations to the exact streamed reply.</td>
+                </tr>
+                <tr>
+                  <td><code>packages/backend/convex/documents.ts</code></td>
+                  <td>Upload URL, attach checks, document list/status, chunk and usage writes.</td>
+                  <td>Own PDF lifecycle and validate each attachment.</td>
+                </tr>
+                <tr>
+                  <td><code>packages/backend/convex/ingest.ts</code></td>
+                  <td>Scheduled Node action for PDF parsing, chunking, gateway embeddings.</td>
+                  <td>Prepare files away from the short upload transaction.</td>
+                </tr>
+                <tr>
+                  <td><code>packages/backend/convex/retrieval.ts</code></td>
+                  <td>Session-scoped keyword/vector retrieval, RRF ranking, PDF sources.</td>
+                  <td>Find useful passages instead of pasting the entire file.</td>
+                </tr>
+                <tr>
+                  <td><code>apps/web/src/routes/_auth/dashboard.tsx</code></td>
+                  <td>PDF upload, document status/errors, web links, PDF page cards.</td>
+                  <td>Make evidence and progress visible to the user.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="reality">
+          <div class="section-label">09 / What is real today?</div>
+          <h2>What can we verify, and what still needs a live run?</h2>
+          <p>
+            The code has passed local <code>pnpm run lint</code>, <code>pnpm run check-types</code>,
+            backend TypeScript checking, <code>pnpm run build</code>, and
+            <code>git diff --check</code>. Those checks catch many code mistakes. They do
+            <strong>not</strong> show that a real Exa search or gateway embedding has succeeded.
+          </p>
+          <div class="callout warn">
+            <strong>Deployment blocker:</strong> the Convex deployment did not have
+            <code>EXA_API_KEY</code> set, so <code>convex dev --once</code> rejected the push. Add
+            your Exa key under Convex Dashboard → Settings → Environment Variables, then push with
+            <code>pnpm run dev:server</code>. Never put the key in the frontend or in this HTML
+            file.
+          </div>
+          <p class="question">How will we know these stages really work?</p>
+          <ol class="steps">
+            <li>
+              <strong>First check Stage 1.</strong>
+              <p>
+                Sign in, ask a normal question, watch its reply stream, refresh, and confirm the
+                conversation remains.
+              </p>
+            </li>
+            <li>
+              <strong>Then check Stage 2.</strong>
+              <p>
+                Ask about a recent public fact. Check that a search actually runs, the answer has
+                [n] markers, cards open real websites, and a <code>toolUsage</code> row is present.
+              </p>
+            </li>
+            <li>
+              <strong>Then check Stage 3.</strong>
+              <p>
+                Upload a small text-based PDF containing a distinctive fact not on the web. Wait for
+                <code>ready</code>. Ask for that fact and check that the answer cites the right PDF
+                page.
+              </p>
+            </li>
+          </ol>
+          <details>
+            <summary>What are the current limits and gaps?</summary>
+            <p>
+              Defaults: three Exa calls per question, five Exa results per call, ten PDFs per
+              session, 25 MiB per PDF, 100 pages, 1,536 embedding dimensions, and five final PDF
+              chunks. The browser uses a fixed 25 MiB check even if the server limit is configured
+              differently. Scanned/image PDFs have no OCR. There is no ingestion retry button,
+              automated citation-to-prose validator, or hard monthly budget enforcement; those are
+              not delivered by these two stages. The embedding cost is provisional (and zero for an
+              unpriced alternative model), not a billing-grade reservation. Email verification
+              remains disabled in <code>auth.ts</code> despite the full spec's requirement.
+            </p>
+          </details>
+          <details>
+            <summary>Which deployment settings matter?</summary>
+            <p>
+              <code>EXA_API_KEY</code> is required to mount the Exa component. Chat also needs
+              <code>GATEWAY_MODEL_ID</code>. PDF embeddings use
+              <code>GATEWAY_EMBEDDING_MODEL</code> (default
+              <code>openai/text-embedding-3-small</code>) and require 1,536 dimensions;
+              <code>GATEWAY_EMBEDDING_DIMS</code>, if set, must be <code>1536</code>. Optional limit
+              variables are <code>RESEARCH_MAX_TASKS</code>, <code>MAX_DOCS_PER_THREAD</code>,
+              <code>MAX_PDF_BYTES</code>, and <code>MAX_PDF_PAGES</code>. These belong to the Convex
+              deployment, not the browser.
+            </p>
+          </details>
+          <p>
+            <strong>One-sentence takeaway:</strong> Stage 1 remembers the conversation; Stage 2
+            fetches fresh public evidence; Stage 3 makes private PDF evidence findable. Citations
+            connect the answer back to the evidence rather than asking you to trust fluent text
+            alone.
+          </p>
+        </section>
+      </main>
+    </div>
+    <footer class="wrap">
+      A standalone guide to the implementation in <code>SPEC.md</code> ·
+      <a href="#top">Back to the beginning</a>
+    </footer>
+  </body>
+</html>
