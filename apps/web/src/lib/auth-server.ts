@@ -25,9 +25,7 @@ const convexAuth = convexBetterAuthReactStart({
 });
 
 export const handler = (request: Request) =>
-  convexAuth.handler(
-    new Request(request, { headers: sanitizeForwardHeaders(request.headers) }),
-  );
+  convexAuth.handler(new Request(request, { headers: sanitizeForwardHeaders(request.headers) }));
 
 export const getToken = async () => {
   const { getRequestHeaders } = await import("@tanstack/react-start/server");

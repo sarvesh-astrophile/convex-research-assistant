@@ -20,6 +20,7 @@ function createAuth(ctx: GenericCtx<DataModel>) {
       enabled: true,
       requireEmailVerification: false,
     },
+    user: { deleteUser: { enabled: true } },
     plugins: [
       convex({
         authConfig,

@@ -26,6 +26,12 @@ catalog:
   "@convex-dev/agent": ^0.7.3
   "@convex-dev/ai-sdk-provider": ^0.2.1
   "@exalabs/convex-exa": 0.1.1
+  "@convex-dev/workflow": ^0.4.8
+  "@convex-dev/ai-budget": 1.0.0-rc.0
+  "@convex-dev/rate-limiter": ^0.4.0
+  convex-test: ^0.0.59
+  "@edge-runtime/vm": ^5.0.0
+  vitest: ^5.0.1
   unpdf: ^1.8.1
   "@types/react": ^19.2.18
   "@types/react-dom": ^19.2.7
@@ -34,3 +40,4 @@ minimumReleaseAgeExclude:
   - "@ai-sdk/gateway@4.0.88"
   - "@convex-dev/ai-sdk-provider@0.2.1"
   - ai@7.0.109
+  - '@convex-dev/ai-budget@1.0.0-rc.0'

@@ -18,8 +18,12 @@ export const listSources = query({
 });
 
 export const reserveSearch = internalMutation({
-  args: { sessionId: v.id("researchSessions"), promptMessageId: v.string() },
-  handler: async (ctx, { sessionId, promptMessageId }) => {
+  args: {
+    sessionId: v.id("researchSessions"),
+    promptMessageId: v.string(),
+    runId: v.optional(v.id("researchRuns")),
+  },
+  handler: async (ctx, { sessionId, promptMessageId, runId }) => {
     const session = await ctx.db.get("researchSessions", sessionId);
     if (!session || session.status !== "running") throw new Error("Search session is unavailable.");
     const previous = await ctx.db
@@ -33,6 +37,7 @@ export const reserveSearch = internalMutation({
     return await ctx.db.insert("toolUsage", {
       userId: session.userId,
       sessionId,
+      runId,
       promptMessageId,
       tool: "exa.search",
       units: 1,
@@ -80,6 +85,10 @@ export const saveSearch = internalMutation({
       }
       if (url.protocol !== "https:" && url.protocol !== "http:") continue;
       url.hash = "";
+      for (const key of Array.from(url.searchParams.keys())) {
+        if (key.startsWith("utm_") || key === "fbclid" || key === "gclid")
+          url.searchParams.delete(key);
+      }
       const dedupeKey = url.toString();
       const found = known.get(dedupeKey);
       if (found) {

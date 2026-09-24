@@ -23,7 +23,7 @@ import {
 } from "@convex-research-assistant/ui/components/input-group";
 import { Message, MessageContent } from "@convex-research-assistant/ui/components/message";
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import {
   ArrowUp,
   FileText,
@@ -52,6 +52,8 @@ export const Route = createFileRoute("/_auth/dashboard")({
 function DashboardContent() {
   const sessions = useQuery(api.sessions.list);
   const createSession = useMutation(api.sessions.create);
+  const renameSession = useMutation(api.sessions.rename);
+  const removeSession = useMutation(api.sessions.remove);
   const navigate = Route.useNavigate();
   const { session: selectedSessionId } = Route.useSearch();
   const [isCreating, setIsCreating] = useState(false);
@@ -59,10 +61,10 @@ function DashboardContent() {
   const selectedSession =
     sessions?.find((session) => session._id === selectedSessionId) ?? sessions?.[0];
 
-  async function handleCreateSession() {
+  async function handleCreateSession(mode: "chat" | "research" = "chat") {
     setIsCreating(true);
     try {
-      const sessionId = await createSession({});
+      const sessionId = await createSession({ mode });
       await navigate({ search: { session: sessionId } });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not create a chat.");
@@ -81,14 +83,26 @@ function DashboardContent() {
             </p>
             <h1 className="mt-1 text-sm font-semibold">Research threads</h1>
           </div>
-          <Button
-            size="icon-sm"
-            onClick={() => void handleCreateSession()}
-            disabled={isCreating}
-            aria-label="Create a new chat"
-          >
-            {isCreating ? <LoaderCircle className="animate-spin" /> : <Plus />}
-          </Button>
+          <div className="flex gap-1">
+            <Button
+              size="icon-sm"
+              onClick={() => void handleCreateSession("chat")}
+              disabled={isCreating}
+              aria-label="Create a new chat"
+            >
+              {isCreating ? <LoaderCircle className="animate-spin" /> : <Plus />}
+            </Button>
+            <Button
+              size="icon-sm"
+              variant="outline"
+              onClick={() => void handleCreateSession("research")}
+              disabled={isCreating}
+              aria-label="Create a new research session"
+              title="New research session"
+            >
+              <FlaskConical />
+            </Button>
+          </div>
         </div>
 
         <nav className="flex min-w-0 flex-1 gap-1 overflow-x-auto p-2 md:flex-col md:overflow-y-auto">
@@ -102,23 +116,58 @@ function DashboardContent() {
             </p>
           ) : (
             sessions.map((session) => (
-              <button
+              <div
                 key={session._id}
-                type="button"
-                onClick={() => void navigate({ search: { session: session._id } })}
-                data-active={selectedSession?._id === session._id}
-                className="group flex min-w-48 items-center gap-2 border border-transparent px-2.5 py-2 text-left text-xs transition-colors hover:bg-muted data-[active=true]:border-border data-[active=true]:bg-muted md:min-w-0"
+                className="flex min-w-48 items-center gap-1 border border-transparent text-xs hover:bg-muted md:min-w-0"
               >
-                <MessageSquare className="size-3.5 shrink-0 text-muted-foreground group-data-[active=true]:text-foreground" />
-                <span className="truncate">{session.title}</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => void navigate({ search: { session: session._id } })}
+                  aria-current={selectedSession?._id === session._id ? "page" : undefined}
+                  className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left aria-[current=page]:bg-muted"
+                >
+                  {session.mode === "research" ? (
+                    <FlaskConical className="size-3.5 shrink-0" />
+                  ) : (
+                    <MessageSquare className="size-3.5 shrink-0" />
+                  )}
+                  <span className="truncate">{session.title}</span>
+                </button>
+                <button
+                  type="button"
+                  className="px-1"
+                  aria-label={`Rename ${session.title}`}
+                  onClick={() => {
+                    const title = window.prompt("Rename session", session.title);
+                    if (title?.trim())
+                      void renameSession({ sessionId: session._id, title: title.trim() }).catch(
+                        (error: unknown) => toast.error(String(error)),
+                      );
+                  }}
+                >
+                  ✎
+                </button>
+                <button
+                  type="button"
+                  className="px-1 text-destructive"
+                  aria-label={`Delete ${session.title}`}
+                  onClick={() => {
+                    if (window.confirm(`Delete ${session.title} and its documents?`))
+                      void removeSession({ sessionId: session._id })
+                        .then(() => navigate({ search: {} }))
+                        .catch((error: unknown) => toast.error(String(error)));
+                  }}
+                >
+                  ×
+                </button>
+              </div>
             ))
           )}
         </nav>
 
         <div className="hidden items-center justify-between border-t p-3 md:flex">
           <span className="text-[0.65rem] tracking-wide text-muted-foreground uppercase">
-            Stages 1–3
+            Research assistant
           </span>
           <UserMenu />
         </div>
@@ -132,6 +181,7 @@ function DashboardContent() {
             threadId={selectedSession.threadId}
             title={selectedSession.title}
             sessionStatus={selectedSession.status}
+            mode={selectedSession.mode}
           />
         ) : (
           <Welcome onCreate={() => void handleCreateSession()} isCreating={isCreating} />
@@ -166,11 +216,13 @@ function ChatSession({
   threadId,
   title,
   sessionStatus,
+  mode,
 }: {
   sessionId: Id<"researchSessions">;
   threadId: string;
   title: string;
   sessionStatus: Doc<"researchSessions">["status"];
+  mode: Doc<"researchSessions">["mode"];
 }) {
   const {
     results: messages,
@@ -185,8 +237,11 @@ function ChatSession({
   });
   const sources = useQuery(api.search.listSources, { sessionId });
   const documents = useQuery(api.documents.list, { sessionId });
+  const researchRuns = useQuery(api.research.list, { sessionId });
+  const budget = useQuery(api.budget.myBudget, { period: new Date().toISOString().slice(0, 7) });
   const uploadUrl = useMutation(api.documents.uploadUrl);
   const attachDocument = useMutation(api.documents.attach);
+  const retryDocument = useMutation(api.documents.retry);
   const [isUploading, setIsUploading] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -235,7 +290,7 @@ function ChatSession({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextPrompt = prompt.trim();
-    if (!nextPrompt || isSending || isStreaming) return;
+    if (!nextPrompt || isSending || isStreaming || sessionStatus === "running") return;
 
     setPrompt("");
     setIsSending(true);
@@ -255,8 +310,16 @@ function ChatSession({
         <div className="min-w-0">
           <h2 className="truncate text-sm font-semibold">{title}</h2>
           <p className="mt-0.5 text-[0.65rem] tracking-wide text-muted-foreground uppercase">
-            Persistent chat · Convex Agent
+            {mode === "research"
+              ? "Durable research · Planner → Researchers → Writer → Fact-checker"
+              : "Persistent chat · Convex Agent"}
           </p>
+          {budget && (
+            <p className="text-[0.65rem] text-muted-foreground">
+              {budget.period} · ${(budget.spentUsd + budget.reservedUsd).toFixed(3)} / $
+              {(budget.capUsd + budget.increaseUsd).toFixed(2)}
+            </p>
+          )}
         </div>
         {isStreaming && (
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -309,6 +372,17 @@ function ChatSession({
             .map((doc) => (
               <p key={doc._id} role="alert" className="text-xs text-destructive">
                 {doc.filename}: {doc.error || "PDF processing failed."}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    void retryDocument({ documentId: doc._id }).catch((error: unknown) =>
+                      toast.error(String(error)),
+                    )
+                  }
+                >
+                  Retry PDF
+                </Button>
               </p>
             ))}
           {sessionStatus === "failed" && (
@@ -316,6 +390,8 @@ function ChatSession({
               The last response failed. Verify the model configuration, then try your message again.
             </div>
           )}
+          {mode === "research" && researchRuns?.[0] && <ResearchTimeline run={researchRuns[0]} />}
+          <ReplayPanel sessionId={sessionId} />
           {status === "CanLoadMore" && (
             <Button variant="ghost" size="sm" className="self-center" onClick={() => loadMore(30)}>
               Load earlier messages
@@ -354,11 +430,13 @@ function ChatSession({
                   event.currentTarget.form?.requestSubmit();
                 }
               }}
-              disabled={isSending || isStreaming}
+              disabled={isSending || isStreaming || sessionStatus === "running"}
               maxLength={20_000}
               rows={3}
               placeholder={
-                isStreaming ? "Waiting for the response..." : "Ask the research assistant..."
+                sessionStatus === "running"
+                  ? "Research is running..."
+                  : "Ask the research assistant..."
               }
               aria-label="Message"
             />
@@ -368,7 +446,7 @@ function ChatSession({
                 type="submit"
                 size="icon-sm"
                 variant="default"
-                disabled={!prompt.trim() || isSending || isStreaming}
+                disabled={!prompt.trim() || isSending || isStreaming || sessionStatus === "running"}
                 aria-label="Send message"
               >
                 {isSending ? <LoaderCircle className="animate-spin" /> : <ArrowUp />}
@@ -378,6 +456,143 @@ function ChatSession({
         </form>
       </div>
     </div>
+  );
+}
+
+function ReplayPanel({ sessionId }: { sessionId: Id<"researchSessions"> }) {
+  const requests = useQuery(api.replay.myRequests);
+  const models = useQuery(api.replay.comparisonModels);
+  const compare = useAction(api.replay.compare);
+  const [requestId, setRequestId] = useState("");
+  const [modelId, setModelId] = useState("");
+  const [comparison, setComparison] = useState<{
+    text: string;
+    costUsd: number;
+    latencyMs: number;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+  if (!models?.length || !requests?.length) return null;
+  return (
+    <details className="border bg-card p-3 text-xs">
+      <summary className="cursor-pointer font-semibold">
+        Compare a recorded request with another model
+      </summary>
+      <form
+        className="mt-3 flex flex-wrap gap-2"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          setLoading(true);
+          try {
+            setComparison(await compare({ sessionId, requestId, modelId }));
+          } catch (error) {
+            toast.error(String(error));
+          } finally {
+            setLoading(false);
+          }
+        }}
+      >
+        <select
+          aria-label="Recorded request"
+          className="border bg-background p-2"
+          value={requestId}
+          onChange={(event) => setRequestId(event.target.value)}
+          required
+        >
+          <option value="">Choose a request</option>
+          {requests.map((request) => (
+            <option key={request._id} value={request._id}>
+              {request.model} · {new Date(request._creationTime).toLocaleString()}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Comparison model"
+          className="border bg-background p-2"
+          value={modelId}
+          onChange={(event) => setModelId(event.target.value)}
+          required
+        >
+          <option value="">Choose a model</option>
+          {models.map((model) => (
+            <option key={model} value={model}>
+              {model}
+            </option>
+          ))}
+        </select>
+        <Button type="submit" size="sm" disabled={loading}>
+          Replay and compare
+        </Button>
+      </form>
+      {comparison && (
+        <div className="mt-3">
+          <p>
+            Cost ${comparison.costUsd.toFixed(4)} · {comparison.latencyMs}ms
+          </p>
+          <pre className="max-h-60 overflow-auto whitespace-pre-wrap">{comparison.text}</pre>
+        </div>
+      )}
+    </details>
+  );
+}
+
+function ResearchTimeline({ run }: { run: Doc<"researchRuns"> }) {
+  const artifacts = useQuery(api.research.artifacts, { runId: run._id });
+  const cancelRun = useMutation(api.research.cancelRun);
+  const retryRun = useMutation(api.research.retryRun);
+  const phases = ["planning", "researching", "writing", "verifying", "completed"];
+  const currentIndex = run.status === "pending" ? -1 : phases.indexOf(run.status);
+  return (
+    <details className="border bg-card p-3 text-xs" open={run.status !== "completed"}>
+      <summary className="cursor-pointer font-semibold">Research · {run.status}</summary>
+      <ol className="mt-3 grid gap-2 sm:grid-cols-5">
+        {phases.map((phase, index) => (
+          <li
+            key={phase}
+            className={index <= currentIndex ? "text-foreground" : "text-muted-foreground"}
+          >
+            {index < currentIndex || run.status === "completed" ? "✓ " : "○ "}
+            {phase}
+          </li>
+        ))}
+      </ol>
+      {run.error && (
+        <p role="alert" className="mt-2 text-destructive">
+          {run.error}
+        </p>
+      )}
+      {artifacts?.map((artifact) => (
+        <details key={artifact._id} className="mt-2 border-t pt-2">
+          <summary className="cursor-pointer font-medium">{artifact.kind}</summary>
+          <pre className="mt-2 max-h-60 overflow-auto whitespace-pre-wrap text-xs">
+            {JSON.stringify(artifact.payload, null, 2)}
+          </pre>
+        </details>
+      ))}
+      {!["completed", "failed", "cancelled"].includes(run.status) && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-2"
+          onClick={() =>
+            void cancelRun({ runId: run._id }).catch((error: unknown) => toast.error(String(error)))
+          }
+        >
+          Cancel run
+        </Button>
+      )}
+      {run.status === "failed" && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-2"
+          onClick={() =>
+            void retryRun({ runId: run._id }).catch((error: unknown) => toast.error(String(error)))
+          }
+        >
+          Retry run
+        </Button>
+      )}
+    </details>
   );
 }
 

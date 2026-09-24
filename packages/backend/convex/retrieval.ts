@@ -5,6 +5,7 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type ActionCtx } from "./_generated/server";
 import { env } from "./_generated/server";
+import { reciprocalRankFusion } from "./retrievalRank";
 
 export const getDocument = internalQuery({
   args: { documentId: v.id("documents") },
@@ -21,25 +22,6 @@ export const hasReadyDocuments = internalQuery({
       .withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
       .take(10);
     return docs.some((doc) => doc.status === "ready");
-  },
-});
-
-export const recordQueryEmbedding = internalMutation({
-  args: { sessionId: v.id("researchSessions"), modelId: v.string(), tokens: v.number() },
-  handler: async (ctx, args) => {
-    const session = await ctx.db.get("researchSessions", args.sessionId);
-    if (!session) throw new Error("Session not found.");
-    await ctx.db.insert("usageLedger", {
-      userId: session.userId,
-      sessionId: args.sessionId,
-      feature: "embedding",
-      modelId: args.modelId,
-      inputTokens: args.tokens,
-      outputTokens: 0,
-      costUsd:
-        args.modelId === "openai/text-embedding-3-small" ? (args.tokens * 0.02) / 1_000_000 : 0,
-      createdAt: Date.now(),
-    });
   },
 });
 
@@ -139,18 +121,38 @@ export async function searchDocuments(
   if (!(await ctx.runQuery(internal.retrieval.hasReadyDocuments, { sessionId: args.sessionId })))
     return [];
   const modelId = env.GATEWAY_EMBEDDING_MODEL || "openai/text-embedding-3-small";
-  const [textIds, embedding] = await Promise.all([
-    ctx.runQuery(internal.retrieval.textMatches, {
-      sessionId: args.sessionId,
-      query: args.query,
-    }),
-    embed({ model: convexGateway.embeddingModel(modelId), value: args.query }),
-  ]);
-  await ctx.runMutation(internal.retrieval.recordQueryEmbedding, {
+  const reservationId = await ctx.runMutation(internal.budget.reserve, {
     sessionId: args.sessionId,
+    feature: "embedding",
     modelId,
-    tokens: embedding.usage?.tokens ?? Math.ceil(args.query.split(/\s+/).length * 1.4),
+    maxInputTokens: args.query.length * 4,
+    maxOutputTokens: 0,
   });
+  let embedding;
+  let textIds;
+  try {
+    [textIds, embedding] = await Promise.all([
+      ctx.runQuery(internal.retrieval.textMatches, {
+        sessionId: args.sessionId,
+        query: args.query,
+      }),
+      embed({ model: convexGateway.embeddingModel(modelId), value: args.query }),
+    ]);
+    await ctx.runMutation(internal.budget.settle, {
+      reservationId,
+      inputTokens: embedding.usage?.tokens ?? Math.ceil(args.query.split(/\s+/).length * 1.4),
+      outputTokens: 0,
+      failed: !embedding.usage?.tokens,
+    });
+  } catch (error) {
+    await ctx.runMutation(internal.budget.settle, {
+      reservationId,
+      inputTokens: 0,
+      outputTokens: 0,
+      failed: true,
+    });
+    throw error;
+  }
   if (embedding.embedding.length !== 1536) throw new Error("Unexpected embedding dimensions.");
   const vectorHits = await ctx.vectorSearch("documentChunks", "by_embedding", {
     vector: embedding.embedding,
@@ -163,16 +165,10 @@ export async function searchDocuments(
     ids,
   });
   const valid = new Set(hydrated.map((entry) => entry.chunk._id));
-  const ranks = new Map<Id<"documentChunks">, number>();
-  for (const list of [textIds, vectorHits.map((hit) => hit._id)]) {
-    list.forEach((id, rank) => {
-      if (valid.has(id)) ranks.set(id, (ranks.get(id) ?? 0) + 1 / (60 + rank + 1));
-    });
-  }
-  const best = [...ranks.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([id]) => id);
+  const best = reciprocalRankFusion<Id<"documentChunks">>(
+    [textIds, vectorHits.map((hit) => hit._id)].map((list) => list.filter((id) => valid.has(id))),
+    5,
+  );
   return await ctx.runMutation(internal.retrieval.recordSources, {
     sessionId: args.sessionId,
     promptMessageId: args.promptMessageId,

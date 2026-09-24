@@ -34,6 +34,15 @@ export const readyForResponse = internalQuery({
   },
 });
 
+export const sessionOwner = internalQuery({
+  args: { sessionId: v.id("researchSessions") },
+  handler: async (ctx, { sessionId }) => {
+    const session = await ctx.db.get("researchSessions", sessionId);
+    if (!session) throw new Error("Session not found.");
+    return session.userId;
+  },
+});
+
 export const uploadUrl = mutation({
   args: { sessionId: v.id("researchSessions") },
   handler: async (ctx, { sessionId }) => {
@@ -139,18 +148,37 @@ export const saveChunks = internalMutation({
         createdAt: Date.now(),
       });
     }
-    await ctx.db.insert("usageLedger", {
-      userId: doc.userId,
-      sessionId: doc.sessionId,
-      feature: "embedding",
-      modelId: args.modelId,
-      inputTokens: args.tokenCount,
-      outputTokens: 0,
-      // This is a provisional estimate; hard cost accounting is introduced in Stage 6.
-      costUsd:
-        args.modelId === "openai/text-embedding-3-small" ? (args.tokenCount * 0.02) / 1_000_000 : 0,
-      createdAt: Date.now(),
-    });
     return null;
+  },
+});
+
+export const retry = mutation({
+  args: { documentId: v.id("documents") },
+  handler: async (ctx, { documentId }) => {
+    const userId = await requireUserId(ctx);
+    const doc = await ctx.db.get("documents", documentId);
+    if (!doc || doc.userId !== userId || doc.status !== "failed")
+      throw new Error("Failed PDF not found.");
+    await ctx.db.patch("documents", documentId, { error: "Preparing to retry extraction." });
+    await ctx.scheduler.runAfter(0, internal.documents.retryCleanup, { documentId });
+  },
+});
+
+export const retryCleanup = internalMutation({
+  args: { documentId: v.id("documents") },
+  handler: async (ctx, { documentId }) => {
+    const doc = await ctx.db.get("documents", documentId);
+    if (!doc || doc.status !== "failed") return;
+    const chunks = await ctx.db
+      .query("documentChunks")
+      .withIndex("by_documentId", (q) => q.eq("documentId", documentId))
+      .take(40);
+    for (const chunk of chunks) await ctx.db.delete("documentChunks", chunk._id);
+    if (chunks.length)
+      await ctx.scheduler.runAfter(0, internal.documents.retryCleanup, { documentId });
+    else {
+      await ctx.db.patch("documents", documentId, { status: "extracting", error: undefined });
+      await ctx.scheduler.runAfter(0, internal.ingest.process, { documentId });
+    }
   },
 });

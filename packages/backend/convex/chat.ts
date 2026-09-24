@@ -7,6 +7,11 @@ import { components, internal } from "./_generated/api";
 import { internalAction, internalMutation, mutation, query } from "./_generated/server";
 import { getAssistantAgent } from "./assistant";
 import { requireUserId } from "./authHelpers";
+import { beginResearch } from "./research";
+import { rateLimiter } from "./limits";
+import { env } from "./_generated/server";
+import { tokenCount } from "./budgetLogic";
+import type { Id } from "./_generated/dataModel";
 
 const MAX_PROMPT_LENGTH = 20_000;
 const MAX_TITLE_LENGTH = 60;
@@ -63,6 +68,10 @@ export const sendMessage = mutation({
     if (trimmedPrompt.length > MAX_PROMPT_LENGTH) {
       throw new Error(`Message cannot exceed ${MAX_PROMPT_LENGTH.toLocaleString()} characters.`);
     }
+    await rateLimiter.limit(ctx, session.mode === "research" ? "research" : "chat", {
+      key: userId,
+      throws: true,
+    });
 
     const { messageId } = await saveMessage(ctx, components.agent, {
       threadId,
@@ -70,7 +79,8 @@ export const sendMessage = mutation({
       prompt: trimmedPrompt,
     });
     const now = Date.now();
-    const firstMessage = session.title === "New chat" && !session.titleEdited;
+    const firstMessage =
+      (session.title === "New chat" || session.title === "New research") && !session.titleEdited;
 
     await ctx.db.patch("researchSessions", sessionId, {
       title: firstMessage
@@ -80,6 +90,16 @@ export const sendMessage = mutation({
       status: "running",
       updatedAt: now,
     });
+    if (session.mode === "research") {
+      await beginResearch(ctx, {
+        sessionId,
+        threadId,
+        userId,
+        promptMessageId: messageId,
+        question: trimmedPrompt,
+      });
+      return null;
+    }
     await ctx.scheduler.runAfter(0, internal.chat.streamResponse, {
       sessionId,
       threadId,
@@ -99,6 +119,7 @@ export const streamResponse = internalAction({
     prompt: v.string(),
   },
   handler: async (ctx, args) => {
+    let reservationId: Id<"budgetReservations"> | undefined;
     try {
       const readyDocuments = await ctx.runQuery(internal.documents.readyForResponse, {
         sessionId: args.sessionId,
@@ -113,7 +134,16 @@ export const streamResponse = internalAction({
             const stem = name.replace(/\.pdf$/i, "").trim();
             return stem.length >= 3 && args.prompt.toLowerCase().includes(stem.toLowerCase());
           }));
+      reservationId = await ctx.runMutation(internal.budget.reserve, {
+        sessionId: args.sessionId,
+        feature: "chat",
+        modelId: env.GATEWAY_MODEL_ID!,
+        maxInputTokens: 4_000_000,
+        maxOutputTokens: 8_000,
+      });
       const result = await getAssistantAgent(
+        ctx,
+        await ctx.runQuery(internal.documents.sessionOwner, { sessionId: args.sessionId }),
         args.sessionId,
         args.promptMessageId,
         readyDocuments,
@@ -123,6 +153,7 @@ export const streamResponse = internalAction({
         {
           promptMessageId: args.promptMessageId,
           stopWhen: stepCountIs(4),
+          maxOutputTokens: 2_000,
           prepareStep: ({ stepNumber }) =>
             stepNumber === 0 && refersToDocuments
               ? { toolChoice: { type: "tool", toolName: "searchDocuments" } }
@@ -131,11 +162,25 @@ export const streamResponse = internalAction({
         { saveStreamDeltas: { chunking: "word", throttleMs: 100 } },
       );
       await result.consumeStream();
+      const usage = await result.totalUsage;
+      await ctx.runMutation(internal.budget.settle, {
+        reservationId,
+        inputTokens: tokenCount(usage.inputTokens),
+        outputTokens: tokenCount(usage.outputTokens),
+        failed: !tokenCount(usage.inputTokens),
+      });
       await ctx.runMutation(internal.chat.finishResponse, {
         sessionId: args.sessionId,
         status: "completed",
       });
     } catch (error) {
+      if (reservationId)
+        await ctx.runMutation(internal.budget.settle, {
+          reservationId,
+          inputTokens: 0,
+          outputTokens: 0,
+          failed: true,
+        });
       await ctx.runMutation(internal.chat.finishResponse, {
         sessionId: args.sessionId,
         status: "failed",

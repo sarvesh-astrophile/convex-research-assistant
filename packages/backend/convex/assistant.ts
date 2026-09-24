@@ -5,10 +5,14 @@ import { z } from "zod";
 import { components, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { env } from "./_generated/server";
+import type { ActionCtx } from "./_generated/server";
+import { ai } from "./budget";
 import { searchDocuments } from "./retrieval";
 import { searchProvider } from "./searchProvider";
 
 export function getAssistantAgent(
+  ctx: ActionCtx,
+  userId: string,
   sessionId: Id<"researchSessions">,
   promptMessageId: string,
   readyDocumentNames: string[],
@@ -20,7 +24,9 @@ export function getAssistantAgent(
 
   return new Agent(components.agent, {
     name: "Research Assistant",
-    languageModel: convexGateway(modelId),
+    languageModel: ai.languageModel(ctx, { userId, model: modelId, action: "chat" }) as ReturnType<
+      typeof convexGateway
+    >,
     instructions: [
       "You are a careful research assistant. For current facts use webSearch; for questions about uploaded PDFs use searchDocuments. Cite only tool results with their exact [n] markers. Do not invent citations; say when evidence is insufficient.",
       readyDocumentNames.length
